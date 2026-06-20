@@ -79,7 +79,7 @@ export default async function SkillGapPage() {
   const completionPercent = totalCount > 0 ? Math.round((acquiredCount / totalCount) * 100) : 0;
 
   return (
-    <div className="flex-1 bg-slate-950 p-6 md:p-12 relative overflow-hidden">
+    <div className="flex-1 bg-slate-950 p-6 md:p-12 relative overflow-hidden animate-slide-up">
       {/* Background glowing decorations */}
       <div className="absolute top-1/4 left-1/4 -z-10 h-96 w-96 rounded-full bg-violet-600/5 blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 -z-10 h-96 w-96 rounded-full bg-indigo-600/5 blur-3xl" />
@@ -104,7 +104,7 @@ export default async function SkillGapPage() {
         </div>
 
         {!targetRole ? (
-          <Card className="border border-border/10 bg-slate-900/40 p-12 text-center backdrop-blur-md space-y-4">
+          <Card className="glass-panel p-12 text-center space-y-4">
             <AlertCircle className="h-12 w-12 text-amber-400 mx-auto" />
             <h3 className="text-lg font-bold text-white">No Target Role Selected</h3>
             <p className="text-slate-400 max-w-md mx-auto text-sm">
@@ -120,7 +120,7 @@ export default async function SkillGapPage() {
           <div className="space-y-8">
             
             {/* Completion Percentage Progress Card */}
-            <Card className="border border-border/10 bg-slate-900/40 p-6 backdrop-blur-md">
+            <Card className="glass-panel p-6">
               <div className="space-y-4">
                 <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
                   <div>
@@ -148,7 +148,7 @@ export default async function SkillGapPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               
               {/* Existing Skills */}
-              <Card className="border border-border/10 bg-slate-900/40 p-6 backdrop-blur-md flex flex-col justify-between h-[300px]">
+              <Card className="glass-panel p-6 flex flex-col justify-between h-[300px]">
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2 mb-2">
                     <CheckCircle2 className="h-5 w-5 text-emerald-400" />
@@ -182,7 +182,7 @@ export default async function SkillGapPage() {
               </Card>
 
               {/* Missing Skills */}
-              <Card className="border border-border/10 bg-slate-900/40 p-6 backdrop-blur-md flex flex-col justify-between h-[300px]">
+              <Card className="glass-panel p-6 flex flex-col justify-between h-[300px]">
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2 mb-2">
                     <AlertCircle className="h-5 w-5 text-rose-400" />
@@ -218,7 +218,7 @@ export default async function SkillGapPage() {
             </div>
 
             {/* Recommended Learning Courses / Detailed List */}
-            <Card className="border border-border/10 bg-slate-900/40 p-6 backdrop-blur-md">
+            <Card className="glass-panel p-6">
               <h3 className="text-base font-bold text-white flex items-center gap-2 border-b border-border/10 pb-3 mb-4">
                 <BookOpen className="h-5 w-5 text-indigo-400" /> Curriculum Study References
               </h3>

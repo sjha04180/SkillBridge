@@ -106,7 +106,7 @@ export default async function RoadmapPage() {
   const progressPercent = totalStepsCount > 0 ? Math.round((completedStepsCount / totalStepsCount) * 100) : 0;
 
   return (
-    <div className="flex-1 bg-slate-950 p-6 md:p-12 relative overflow-hidden">
+    <div className="flex-1 bg-slate-950 p-6 md:p-12 relative overflow-hidden animate-slide-up">
       {/* Background glowing decorations */}
       <div className="absolute top-1/4 left-1/4 -z-10 h-96 w-96 rounded-full bg-violet-600/5 blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 -z-10 h-96 w-96 rounded-full bg-indigo-600/5 blur-3xl" />
@@ -131,7 +131,7 @@ export default async function RoadmapPage() {
         </div>
 
         {!targetRole ? (
-          <Card className="border border-border/10 bg-slate-900/40 p-12 text-center backdrop-blur-md space-y-4">
+          <Card className="glass-panel p-12 text-center space-y-4">
             <AlertCircle className="h-12 w-12 text-amber-400 mx-auto" />
             <h3 className="text-lg font-bold text-white">No Target Role Selected</h3>
             <p className="text-slate-400 max-w-md mx-auto text-sm">
@@ -147,7 +147,7 @@ export default async function RoadmapPage() {
           <div className="space-y-8">
             
             {/* Progress metrics card */}
-            <Card className="border border-border/10 bg-slate-900/40 p-6 backdrop-blur-md">
+            <Card className="glass-panel p-6">
               <div className="space-y-4">
                 <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
                   <div>
@@ -172,7 +172,7 @@ export default async function RoadmapPage() {
             </Card>
 
             {/* Stepper Timeline */}
-            <Card className="border border-border/10 bg-slate-900/40 p-8 backdrop-blur-md">
+            <Card className="glass-panel p-8">
               <div className="relative border-l-2 border-indigo-500/20 ml-6 md:ml-8 space-y-12 pb-4">
                 {roadmapSteps.map((step, index) => {
                   const isCompleted = step.completed;
@@ -248,7 +248,7 @@ export default async function RoadmapPage() {
             </Card>
 
             {/* General Advice */}
-            <Card className="border border-border/10 bg-slate-900/40 p-6 backdrop-blur-md flex items-start gap-4">
+            <Card className="glass-panel p-6 flex items-start gap-4">
               <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
                 <Sparkles className="h-5 w-5" />
               </div>

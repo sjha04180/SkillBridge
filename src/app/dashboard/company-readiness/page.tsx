@@ -81,7 +81,7 @@ export default async function CompanyReadinessPage() {
   const hasProjects = projectsCount >= 1;
 
   return (
-    <div className="flex-1 bg-slate-950 p-6 md:p-12 relative overflow-hidden">
+    <div className="flex-1 bg-slate-950 p-6 md:p-12 relative overflow-hidden animate-slide-up">
       {/* Background glowing decorations */}
       <div className="absolute top-1/4 left-1/4 -z-10 h-96 w-96 rounded-full bg-violet-600/5 blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 -z-10 h-96 w-96 rounded-full bg-indigo-600/5 blur-3xl" />
@@ -153,7 +153,7 @@ export default async function CompanyReadinessPage() {
             const readinessPercent = totalCriteria > 0 ? Math.round((matchedCount / totalCriteria) * 100) : 0;
 
             return (
-              <Card key={company.name} className="border border-border/10 bg-slate-900/40 p-6 backdrop-blur-md flex flex-col justify-between h-[360px] hover:border-indigo-500/20 transition-all duration-300">
+              <Card key={company.name} className="glass-panel p-6 flex flex-col justify-between h-[360px] transition-all duration-300">
                 <div className="space-y-4">
                   
                   {/* Top section: Name & percentage */}
@@ -241,7 +241,7 @@ export default async function CompanyReadinessPage() {
         </div>
 
         {/* Info card */}
-        <Card className="border border-border/10 bg-slate-900/40 p-6 backdrop-blur-md flex items-start gap-4">
+        <Card className="glass-panel p-6 flex items-start gap-4">
           <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
             <Sparkles className="h-5 w-5" />
           </div>

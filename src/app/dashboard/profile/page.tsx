@@ -71,12 +71,28 @@ export default function ProfilePage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Floating Toast State
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | null }>({
+    message: '',
+    type: null,
+  });
+
   // Local helper states for adding tags
   const [skillInput, setSkillInput] = useState('');
   const [certInput, setCertInput] = useState('');
   const [projectTitle, setProjectTitle] = useState('');
   const [projectDesc, setProjectDesc] = useState('');
   const [projectTech, setProjectTech] = useState('');
+
+  // Toast automatic dismiss effect
+  useEffect(() => {
+    if (toast.type) {
+      const timer = setTimeout(() => {
+        setToast({ message: '', type: null });
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -193,12 +209,25 @@ export default function ProfilePage() {
     setSuccessMsg('');
 
     // Validation
-    if (!profile.name.trim()) return setErrorMsg('Name is required');
-    if (!profile.college.trim()) return setErrorMsg('College name is required');
-    if (!profile.branch.trim()) return setErrorMsg('Branch name is required');
-    if (profile.cgpa < 0 || profile.cgpa > 10) return setErrorMsg('CGPA must be between 0 and 10');
+    if (!profile.name.trim()) {
+      setToast({ message: 'Name is required', type: 'error' });
+      return;
+    }
+    if (!profile.college.trim()) {
+      setToast({ message: 'College name is required', type: 'error' });
+      return;
+    }
+    if (!profile.branch.trim()) {
+      setToast({ message: 'Branch name is required', type: 'error' });
+      return;
+    }
+    if (profile.cgpa < 0 || profile.cgpa > 10) {
+      setToast({ message: 'CGPA must be between 0 and 10', type: 'error' });
+      return;
+    }
     if (profile.graduationYear < 1980 || profile.graduationYear > 2040) {
-      return setErrorMsg('Please enter a valid graduation year');
+      setToast({ message: 'Please enter a valid graduation year', type: 'error' });
+      return;
     }
 
     setIsSaving(true);
@@ -214,27 +243,33 @@ export default function ProfilePage() {
         throw new Error(errorData.error || 'Failed to update profile');
       }
 
-      setSuccessMsg('Profile updated successfully!');
+      setToast({ message: 'Career profile updated successfully!', type: 'success' });
       router.refresh(); // refresh server side caches
     } catch (err: any) {
-      setErrorMsg(err.message || 'Error updating profile');
+      setToast({ message: err.message || 'Error updating profile', type: 'error' });
     } finally {
       setIsSaving(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-slate-950 p-6">
-        <Loader2 className="h-10 w-10 text-indigo-500 animate-spin mb-4" />
-        <p className="text-slate-400 font-medium">Loading your profile details...</p>
+      <div className="flex-1 bg-slate-950 p-6 md:p-12 space-y-8 animate-pulse-slow">
+        <div>
+          <div className="h-10 w-64 bg-slate-800 rounded-lg mb-2 skeleton-pulse" />
+          <div className="h-4 w-96 bg-slate-800 rounded-lg mb-2 skeleton-pulse" />
+        </div>
+        <div className="space-y-6">
+          <div className="h-44 w-full bg-slate-900/60 rounded-xl p-6 border border-white/5 space-y-4 skeleton-pulse" />
+          <div className="h-44 w-full bg-slate-900/60 rounded-xl p-6 border border-white/5 space-y-4 skeleton-pulse" />
+          <div className="h-44 w-full bg-slate-900/60 rounded-xl p-6 border border-white/5 space-y-4 skeleton-pulse" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 bg-slate-950 p-6 md:p-12 relative overflow-hidden">
+    <div className="flex-1 bg-slate-950 p-6 md:p-12 relative overflow-hidden animate-slide-up">
       {/* Background decorations */}
       <div className="absolute top-1/4 left-1/4 -z-10 h-96 w-96 rounded-full bg-violet-600/5 blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 -z-10 h-96 w-96 rounded-full bg-indigo-600/5 blur-3xl" />
@@ -249,25 +284,12 @@ export default function ProfilePage() {
           </p>
         </div>
 
-        {/* Notifications */}
-        {errorMsg && (
-          <div className="flex items-center gap-3 p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-300">
-            <AlertCircle className="h-5 w-5 shrink-0" />
-            <p className="text-sm font-medium">{errorMsg}</p>
-          </div>
-        )}
-
-        {successMsg && (
-          <div className="flex items-center gap-3 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 animate-pulse">
-            <CheckCircle2 className="h-5 w-5 shrink-0" />
-            <p className="text-sm font-medium">{successMsg}</p>
-          </div>
-        )}
+        {/* Toast alerts now handle updates notification */}
 
         <form onSubmit={handleSubmit} className="space-y-8">
           
           {/* Card 1: Personal Details */}
-          <Card className="border border-border/10 bg-slate-900/40 shadow-xl backdrop-blur-md">
+          <Card className="glass-panel">
             <CardHeader className="border-b border-border/5">
               <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
                 <User className="h-5 w-5 text-indigo-400" />
@@ -311,7 +333,7 @@ export default function ProfilePage() {
           </Card>
 
           {/* Card 2: Academic Details */}
-          <Card className="border border-border/10 bg-slate-900/40 shadow-xl backdrop-blur-md">
+          <Card className="glass-panel">
             <CardHeader className="border-b border-border/5">
               <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
                 <GraduationCap className="h-5 w-5 text-indigo-400" />
@@ -394,7 +416,7 @@ export default function ProfilePage() {
           </Card>
 
           {/* Card 3: Career & Skills Details */}
-          <Card className="border border-border/10 bg-slate-900/40 shadow-xl backdrop-blur-md">
+          <Card className="glass-panel">
             <CardHeader className="border-b border-border/5">
               <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
                 <Briefcase className="h-5 w-5 text-indigo-400" />
@@ -513,7 +535,7 @@ export default function ProfilePage() {
           </Card>
 
           {/* Card 4: Placement Prep (DSA & Projects) */}
-          <Card className="border border-border/10 bg-slate-900/40 shadow-xl backdrop-blur-md">
+          <Card className="glass-panel">
             <CardHeader className="border-b border-border/5">
               <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
                 <Compass className="h-5 w-5 text-indigo-400" />
@@ -653,6 +675,18 @@ export default function ProfilePage() {
           </div>
         </form>
       </div>
+
+      {/* Floatable Toast System */}
+      {toast.type && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-xl border shadow-2xl animate-slide-up ${
+          toast.type === 'success' 
+            ? 'bg-emerald-950/90 border-emerald-500/30 text-emerald-300' 
+            : 'bg-rose-950/90 border-rose-500/30 text-rose-300'
+        } backdrop-blur-md`}>
+          {toast.type === 'success' ? <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" /> : <AlertCircle className="h-5 w-5 text-rose-400 shrink-0" />}
+          <span className="text-xs font-bold">{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 }

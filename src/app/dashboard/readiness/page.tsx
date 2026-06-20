@@ -140,7 +140,7 @@ export default async function ReadinessScorePage() {
   const strokeDashoffset = circumference - (totalScore / 100) * circumference;
 
   return (
-    <div className="flex-1 bg-slate-950 p-6 md:p-12 relative overflow-hidden">
+    <div className="flex-1 bg-slate-950 p-6 md:p-12 relative overflow-hidden animate-slide-up">
       {/* Background decorations */}
       <div className="absolute top-1/4 left-1/4 -z-10 h-96 w-96 rounded-full bg-violet-600/5 blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 -z-10 h-96 w-96 rounded-full bg-indigo-600/5 blur-3xl" />
@@ -168,7 +168,7 @@ export default async function ReadinessScorePage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           
           {/* Circular Ring Card */}
-          <Card className="md:col-span-1 border border-border/10 bg-slate-900/40 p-6 backdrop-blur-md flex flex-col items-center justify-center text-center">
+          <Card className="md:col-span-1 glass-panel p-6 flex flex-col items-center justify-center text-center">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-bold text-slate-300 uppercase tracking-widest">
                 Overall Index
@@ -223,7 +223,7 @@ export default async function ReadinessScorePage() {
           </Card>
 
           {/* Breakdown Score details */}
-          <Card className="md:col-span-2 border border-border/10 bg-slate-900/40 p-6 backdrop-blur-md flex flex-col justify-between">
+          <Card className="md:col-span-2 glass-panel p-6 flex flex-col justify-between">
             <div>
               <h3 className="text-base font-bold text-white border-b border-border/10 pb-3 flex items-center justify-between">
                 <span>Score Checklist Breakdown</span>
@@ -284,7 +284,7 @@ export default async function ReadinessScorePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           
           {/* Missing Target Skills */}
-          <Card className="border border-border/10 bg-slate-900/40 p-6 backdrop-blur-md flex flex-col justify-between">
+          <Card className="glass-panel p-6 flex flex-col justify-between">
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2 mb-2">
                 <Zap className="h-5 w-5 text-indigo-400" />
@@ -332,7 +332,7 @@ export default async function ReadinessScorePage() {
           </Card>
 
           {/* Dynamic Action Suggestions */}
-          <Card className="border border-border/10 bg-slate-900/40 p-6 backdrop-blur-md flex flex-col justify-between">
+          <Card className="glass-panel p-6 flex flex-col justify-between">
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2 mb-2">
                 <Compass className="h-5 w-5 text-indigo-400" />
@@ -363,7 +363,7 @@ export default async function ReadinessScorePage() {
         </div>
 
         {/* Strengths Inventory card */}
-        <Card className="border border-border/10 bg-slate-900/40 p-6 backdrop-blur-md">
+        <Card className="glass-panel p-6">
           <h3 className="text-base font-bold text-white flex items-center gap-2 mb-3">
             <Sparkles className="h-5 w-5 text-indigo-400" />
             Verified Portfolio Strengths

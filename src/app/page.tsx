@@ -11,10 +11,15 @@ import {
   Code,
   Share2
 } from 'lucide-react';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-export default function Home() {
-  return (
-    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100 overflow-hidden">
+export default async function Home() {
+    const session = await getServerSession(authOptions);
+    const isAuthenticated = !!session;
+
+    return (
+      <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100 overflow-hidden">
       {/* Background glowing blobs */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 -z-10 h-[500px] w-full max-w-7xl rounded-full bg-indigo-600/10 blur-[120px]" />
       <div className="absolute top-[800px] left-1/4 -z-10 h-[400px] w-[400px] rounded-full bg-violet-600/5 blur-[100px]" />
@@ -39,17 +44,35 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-            <Link href="/register">
-              <Button size="lg" variant="gradient" className="w-full sm:w-auto font-semibold">
-                Get Started Free
-                <ArrowRight className="ml-2 h-5 w-5 inline" />
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto text-slate-300 border-border/40 font-semibold">
-                Learn More
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link href="/dashboard">
+                  <Button size="lg" variant="gradient" className="w-full sm:w-auto font-semibold cursor-pointer">
+                    Go to Dashboard
+                    <ArrowRight className="ml-2 h-5 w-5 inline" />
+                  </Button>
+                </Link>
+                <Link href="/dashboard/profile">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto text-slate-300 border-border/40 font-semibold cursor-pointer">
+                    View My Profile
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/register">
+                  <Button size="lg" variant="gradient" className="w-full sm:w-auto font-semibold cursor-pointer">
+                    Get Started Free
+                    <ArrowRight className="ml-2 h-5 w-5 inline" />
+                  </Button>
+                </Link>
+                <Link href="/login">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto text-slate-300 border-border/40 font-semibold cursor-pointer">
+                    Learn More
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -179,9 +202,9 @@ export default function Home() {
               Create your SkillBridge account in seconds, highlight your competencies, and search for potential project collaborators.
             </p>
             <div className="pt-2">
-              <Link href="/register">
+              <Link href={isAuthenticated ? "/dashboard" : "/register"}>
                 <Button size="lg" variant="gradient" className="font-semibold cursor-pointer">
-                  Join SkillBridge Now
+                  {isAuthenticated ? "Go to Dashboard" : "Join SkillBridge Now"}
                   <ArrowRight className="ml-2 h-5 w-5 inline" />
                 </Button>
               </Link>
