@@ -19,6 +19,7 @@ import {
   Briefcase,
   AlertCircle,
   CheckCircle2,
+  Compass,
 } from 'lucide-react';
 
 const TARGET_ROLES = [
@@ -28,6 +29,12 @@ const TARGET_ROLES = [
   'Software Engineer',
   'Data Analyst',
 ];
+
+interface Project {
+  title: string;
+  description: string;
+  technologies: string[];
+}
 
 interface ProfileData {
   name: string;
@@ -39,6 +46,8 @@ interface ProfileData {
   skills: string[];
   certifications: string[];
   targetRole: string;
+  projects: Project[];
+  dsaProgress: number;
 }
 
 export default function ProfilePage() {
@@ -53,6 +62,8 @@ export default function ProfilePage() {
     skills: [],
     certifications: [],
     targetRole: '',
+    projects: [],
+    dsaProgress: 0,
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -63,6 +74,9 @@ export default function ProfilePage() {
   // Local helper states for adding tags
   const [skillInput, setSkillInput] = useState('');
   const [certInput, setCertInput] = useState('');
+  const [projectTitle, setProjectTitle] = useState('');
+  const [projectDesc, setProjectDesc] = useState('');
+  const [projectTech, setProjectTech] = useState('');
 
   useEffect(() => {
     async function fetchProfile() {
@@ -82,6 +96,8 @@ export default function ProfilePage() {
           skills: data.skills || [],
           certifications: data.certifications || [],
           targetRole: data.targetRole || '',
+          projects: data.projects || [],
+          dsaProgress: data.dsaProgress || 0,
         });
       } catch (err: any) {
         setErrorMsg(err.message || 'Error loading profile data');
@@ -135,6 +151,39 @@ export default function ProfilePage() {
     setProfile((prev) => ({
       ...prev,
       certifications: prev.certifications.filter((_, idx) => idx !== indexToRemove),
+    }));
+  };
+
+  const addProject = (e: React.FormEvent) => {
+    e.preventDefault();
+    const title = projectTitle.trim();
+    if (!title) return;
+    
+    const techArray = projectTech
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t !== '');
+
+    const newProject: Project = {
+      title,
+      description: projectDesc.trim(),
+      technologies: techArray,
+    };
+
+    setProfile((prev) => ({
+      ...prev,
+      projects: [...prev.projects, newProject],
+    }));
+
+    setProjectTitle('');
+    setProjectDesc('');
+    setProjectTech('');
+  };
+
+  const removeProject = (indexToRemove: number) => {
+    setProfile((prev) => ({
+      ...prev,
+      projects: prev.projects.filter((_, idx) => idx !== indexToRemove),
     }));
   };
 
@@ -459,6 +508,128 @@ export default function ProfilePage() {
                 ) : (
                   <p className="text-xs text-slate-500 italic">No certifications listed yet.</p>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card 4: Placement Prep (DSA & Projects) */}
+          <Card className="border border-border/10 bg-slate-900/40 shadow-xl backdrop-blur-md">
+            <CardHeader className="border-b border-border/5">
+              <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+                <Compass className="h-5 w-5 text-indigo-400" />
+                Placement Prep (DSA & Projects)
+              </CardTitle>
+              <CardDescription className="text-slate-400">Add your engineering projects and track your DSA coding practice progress.</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-6">
+              
+              {/* DSA Progress Slider */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="dsaProgress" className="text-slate-300 text-xs font-semibold uppercase tracking-wider">DSA Progress (%)</Label>
+                  <span className="text-sm font-bold text-indigo-400">{profile.dsaProgress}% completed</span>
+                </div>
+                <input
+                  id="dsaProgress"
+                  name="dsaProgress"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={profile.dsaProgress}
+                  onChange={(e) => setProfile((prev) => ({ ...prev, dsaProgress: Number(e.target.value) }))}
+                  className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                />
+                <p className="text-[10px] text-slate-500 italic">Estimate your general DSA preparation level (e.g. key topics completed like Trees, Graphs, DP).</p>
+              </div>
+
+              {/* Dynamic Projects Builder */}
+              <div className="space-y-4 pt-4 border-t border-border/5">
+                <Label className="text-slate-300 text-xs font-semibold uppercase tracking-wider block">My Technical Projects</Label>
+                
+                {/* List current projects */}
+                {profile.projects && profile.projects.length > 0 ? (
+                  <div className="space-y-3">
+                    {profile.projects.map((proj, idx) => (
+                      <div key={idx} className="flex justify-between items-start p-4 rounded-xl bg-slate-950/60 border border-border/5">
+                        <div className="space-y-1.5">
+                          <h4 className="text-sm font-bold text-white">{proj.title}</h4>
+                          {proj.description && <p className="text-xs text-slate-400">{proj.description}</p>}
+                          {proj.technologies && proj.technologies.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {proj.technologies.map((t) => (
+                                <span key={t} className="text-[9px] font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={() => removeProject(idx)}
+                          variant="ghost"
+                          size="sm"
+                          className="text-slate-500 hover:text-rose-400 hover:bg-transparent"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 italic">No projects listed. Add projects below to earn readiness score points.</p>
+                )}
+
+                {/* Add new project subform */}
+                <div className="p-4 rounded-xl bg-slate-950/30 border border-border/5 space-y-4">
+                  <h4 className="text-xs font-bold text-slate-300">Add Technical Project</h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="projTitle" className="text-xs text-slate-400">Project Title</Label>
+                      <Input
+                        id="projTitle"
+                        value={projectTitle}
+                        onChange={(e) => setProjectTitle(e.target.value)}
+                        placeholder="e.g. E-Commerce Backend API"
+                        className="bg-slate-950/80 border-border/20 text-white"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="projTech" className="text-xs text-slate-400">Technologies (comma-separated)</Label>
+                      <Input
+                        id="projTech"
+                        value={projectTech}
+                        onChange={(e) => setProjectTech(e.target.value)}
+                        placeholder="e.g. Node.js, Express, MongoDB"
+                        className="bg-slate-950/80 border-border/20 text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="projDesc" className="text-xs text-slate-400">Project Description (optional)</Label>
+                    <Input
+                      id="projDesc"
+                      value={projectDesc}
+                      onChange={(e) => setProjectDesc(e.target.value)}
+                      placeholder="e.g. Built fully functional catalog microservice using Express and MongoDB."
+                      className="bg-slate-950/80 border-border/20 text-white"
+                    />
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      onClick={addProject}
+                      className="bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-border/10 cursor-pointer text-xs"
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Add Project to Profile
+                    </Button>
+                  </div>
+                </div>
+
               </div>
             </CardContent>
           </Card>

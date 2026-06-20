@@ -46,6 +46,8 @@ export async function GET(req: Request) {
       skills: profileDoc.skills,
       certifications: profileDoc.certifications,
       targetRole: profileDoc.targetRole,
+      projects: profileDoc.projects || [],
+      dsaProgress: profileDoc.dsaProgress || 0,
     });
   } catch (error: any) {
     console.error('Error fetching profile:', error);
@@ -76,6 +78,8 @@ export async function PUT(req: Request) {
       skills,
       certifications,
       targetRole,
+      projects,
+      dsaProgress,
     } = body;
 
     // Validate inputs
@@ -112,6 +116,8 @@ export async function PUT(req: Request) {
         skills: Array.isArray(skills) ? skills : [],
         certifications: Array.isArray(certifications) ? certifications : [],
         targetRole: targetRole || '',
+        projects: Array.isArray(projects) ? projects : [],
+        dsaProgress: dsaProgress !== undefined ? Number(dsaProgress) : 0,
       },
       { new: true, upsert: true }
     );
@@ -128,6 +134,8 @@ export async function PUT(req: Request) {
         skills: updatedProfile.skills,
         certifications: updatedProfile.certifications,
         targetRole: updatedProfile.targetRole,
+        projects: updatedProfile.projects,
+        dsaProgress: updatedProfile.dsaProgress,
       },
     });
   } catch (error: any) {

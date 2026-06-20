@@ -32,6 +32,22 @@ const ProfileSchema = new Schema(
       ],
       default: '',
     },
+    projects: {
+      type: [
+        {
+          title: { type: String, required: true },
+          description: { type: String, default: '' },
+          technologies: { type: [String], default: [] },
+        },
+      ],
+      default: [],
+    },
+    dsaProgress: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
   },
   {
     timestamps: true,

@@ -27,9 +27,9 @@ import Link from "next/link";
 // Define role-specific standard skills
 const ROLE_SKILLS: Record<string, string[]> = {
   'Frontend Developer': ['React', 'HTML', 'CSS', 'JavaScript', 'Tailwind CSS', 'TypeScript', 'Next.js'],
-  'Backend Developer': ['Node.js', 'Express', 'MongoDB', 'SQL', 'REST APIs', 'Docker', 'Git'],
-  'Full Stack Developer': ['React', 'Node.js', 'MongoDB', 'Next.js', 'SQL', 'Tailwind CSS', 'TypeScript'],
-  'Software Engineer': ['Data Structures', 'Algorithms', 'Java', 'Python', 'C++', 'System Design', 'Git'],
+  'Backend Developer': ['Node.js', 'Express', 'MongoDB', 'SQL', 'DBMS', 'Docker', 'Git'],
+  'Full Stack Developer': ['React', 'Node.js', 'MongoDB', 'DBMS', 'SQL', 'Tailwind CSS', 'TypeScript'],
+  'Software Engineer': ['Data Structures', 'Algorithms', 'DBMS', 'Java', 'Python', 'System Design', 'Git'],
   'Data Analyst': ['Python', 'SQL', 'Excel', 'Tableau', 'Statistics', 'Pandas', 'PowerBI'],
 };
 
@@ -65,6 +65,8 @@ export default async function DashboardPage() {
     skills: [],
     certifications: [],
     targetRole: '',
+    projects: [],
+    dsaProgress: 0,
   };
 
   const userSkillsLower = (profile.skills || []).map((s: string) => s.toLowerCase().trim());
@@ -79,23 +81,34 @@ export default async function DashboardPage() {
     (skill: string) => userSkillsLower.includes(skill.toLowerCase().trim())
   );
 
-  // 1. Placement Readiness Score calculation
-  let readinessScore = 15; // base for signing up
-  if (profileDoc) {
-    if (profile.cgpa) {
-      readinessScore += Math.min(40, Math.round(profile.cgpa * 4)); 
-    }
-    if (profile.skills && profile.skills.length > 0) {
-      readinessScore += Math.min(25, profile.skills.length * 5);
-    }
-    if (profile.certifications && profile.certifications.length > 0) {
-      readinessScore += Math.min(10, profile.certifications.length * 5);
-    }
-    if (profile.targetRole) {
-      readinessScore += 10;
-    }
+  // New Placement Readiness Score calculation (align with /dashboard/readiness)
+  let skillsPoints = 0;
+  if (targetRole) {
+    skillsPoints = requiredSkills.length > 0 
+      ? Math.round((acquiredSkills.length / requiredSkills.length) * 30) 
+      : 0;
+  } else {
+    skillsPoints = Math.min(30, (profile.skills?.length || 0) * 5);
   }
-  readinessScore = Math.min(100, readinessScore);
+
+  const projectsCount = profile.projects?.length || 0;
+  const projectsPoints = Math.min(25, projectsCount * 10);
+
+  const dsaProgressVal = profile.dsaProgress || 0;
+  const dsaPoints = Math.round(dsaProgressVal * 0.25);
+
+  const certsCount = profile.certifications?.length || 0;
+  const certsPoints = Math.min(10, certsCount * 5);
+
+  let profilePoints = 0;
+  if (userDoc.name) profilePoints += 2;
+  if (userDoc.college) profilePoints += 2;
+  if (userDoc.branch) profilePoints += 2;
+  if (userDoc.graduationYear) profilePoints += 2;
+  if (profile.cgpa > 0) profilePoints += 1;
+  if (targetRole) profilePoints += 1;
+
+  const readinessScore = skillsPoints + projectsPoints + dsaPoints + certsPoints + profilePoints;
 
   // 2. Company matches calculation
   const companyMatches = COMPANY_REQUIREMENTS.map((company) => {
