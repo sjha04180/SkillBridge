@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SkillBridge 🚀
 
-## Getting Started
+**SkillBridge** is a modern, high-fidelity peer-to-peer campus networking and career preparation platform designed for college students. It connects peers to share technical skills, collaborate on projects, track academic scoring, and analyze job placement readiness against top-tier corporate recruitment expectations.
 
-First, run the development server:
+---
 
+## ✨ Features
+
+- **🛡️ Secure Peer Authentication**: Complete authentication workflows powered by **NextAuth.js** with college email validations.
+- **📊 Placement Readiness Score**: A dynamic scoring system (out of 100 points) evaluating students on Profile completion, Skills, Projects, DSA progress, and Certifications.
+- **🎯 Dynamic Skill Gap Assessment**: Compares your listed profile competencies against standard requirements for target roles (e.g., Frontend, Backend, Full Stack, Software Engineer, Data Analyst) and charts missing technologies.
+- **🗺️ Interactive Timeline Career Roadmap**: Generates a step-by-step career path checklist optimized for the student's selected target role.
+- **🏢 Company Readiness Checker**: Gauges preparation index against specific requirements for corporate partners (Google, Amazon, Microsoft, JPMC, TCS, Infosys) detailing matched vs. missing skills.
+- **💫 Modern Glassmorphic SaaS UI**: Styled with responsive, glassmorphic dashboards, smooth active transitions, entry animations, glowing loading skeletons, and interactive floating toast notifications.
+
+---
+
+## 🛠️ Technology Stack
+
+- **Framework**: [Next.js 16 (App Router)](https://nextjs.org/)
+- **Database**: [MongoDB](https://www.mongodb.com/) via [Mongoose ODM](https://mongoosejs.com/)
+- **Authentication**: [NextAuth.js](https://next-auth.js.org/)
+- **Styling**: Tailwind CSS & Vanilla CSS custom components
+- **Icons**: [Lucide React](https://lucide.dev/)
+
+---
+
+## 💻 Local Setup & Installation
+
+Follow these steps to configure and run the SkillBridge development environment on your machine:
+
+### Prerequisites
+Make sure you have the following installed:
+- [Node.js](https://nodejs.org/) (v18.x or higher recommended)
+- [MongoDB](https://www.mongodb.com/try/download/community) (either running locally or a MongoDB Atlas Cloud URI)
+
+---
+
+### Step-by-Step Guide
+
+### 1. Clone the Repository
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/sjha04180/SkillBridge.git
+cd SkillBridge
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Install Project Dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Configure Environment Variables
+Create a file named `.env.local` in the root of the project:
+```bash
+# Windows command line / PowerShell:
+New-Item .env.local -ItemType File
+```
+Open `.env.local` and configure the following variables:
+```env
+# Database Connection URI
+MONGODB_URI=mongodb://localhost:27017/skillbridge
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# NextAuth Base URL (Local Development)
+NEXTAUTH_URL=http://localhost:3000
 
-## Learn More
+# NextAuth Secret Key (Generate one using: openssl rand -base64 32)
+NEXTAUTH_SECRET=your_generated_secret_key
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 4. Run the Development Server
+Make sure your MongoDB server is active, then launch the Next.js local compiler:
+```bash
+npm run dev
+```
+Open your browser and navigate to **[http://localhost:3000](http://localhost:3000)**.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 5. Build for Production
+To build and optimize the project for deployment:
+```bash
+npm run build
+npm run start
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## ☁️ Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+When deploying to platforms like **Vercel**, **Netlify**, or **Render**:
+1. Do **not** commit `.env.local` to Git.
+2. In the hosting provider's dashboard, configure the Production Environment variables:
+   - `MONGODB_URI` -> Point to a live **MongoDB Atlas** database cloud string.
+   - `NEXTAUTH_URL` -> Set to the live website URL (e.g. `https://yourdomain.com`).
+   - `NEXTAUTH_SECRET` -> Generate a new cryptographically secure secret.
