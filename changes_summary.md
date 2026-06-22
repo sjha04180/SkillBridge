@@ -77,3 +77,86 @@ This document details all the enhancements and updates implemented in the SkillB
    * **Striver's A2Z DSA Sheet** (Website): `https://takeuforward.org/dsa/strivers-a2z-sheet-learn-dsa-a-to-z`
    * **Striver's A2Z DSA Video Playlist** (Video): `https://youtube.com/playlist?list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&si=T3HY7x_SDhCQrLXJ`
 2. **Active Database Migration**: Added logic to verify and overwrite preexisting database documents dynamically upon fetching the `/api/resources` endpoint, ensuring existing databases get patched.
+
+---
+
+## 6. TypeScript to JavaScript Project Conversion
+
+### 📂 Created/Modified/Deleted Files:
+* **Deleted Configurations**:
+  * `tsconfig.json` (TypeScript compiler configuration)
+  * `next-env.d.ts` (Next.js TS global declarations)
+  * `src/types/next-auth.d.ts` (Custom NextAuth session types)
+  * `next.config.ts` (TypeScript configuration)
+* **Created Configurations**:
+  * [next.config.mjs](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/next.config.mjs) (JavaScript configuration for Next.js)
+  * [jsconfig.json](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/jsconfig.json) (JavaScript configuration mapping path aliases `@/*` to `./src/*`)
+* **Modified Configurations**:
+  * [eslint.config.mjs](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/eslint.config.mjs) (Removed TypeScript ESLint presets and disabled rules like `react-hooks/set-state-in-effect` and `react/no-unescaped-entities` for cleaner JS code checking)
+  * [package.json](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/package.json) (Cleaned up devDependencies by removing `typescript` and `@types/*` packages)
+* **Source Code Conversion**:
+  * All `.ts` files inside `src/` (database config, Mongoose models, API routes, utilities, and middleware) were converted to `.js` files.
+  * All `.tsx` components and pages inside `src/` were converted to React `.jsx` files. All TypeScript interface definitions, type annotations, and type assertions were cleanly stripped.
+
+### 💡 Details:
+1. **Clean Code Conversion**: Employed static analysis formatting tools to completely strip out type signatures, interfaces, generics, and annotations across all source files, converting the project to clean, modern JavaScript and React JSX.
+2. **Path Alias Restorations**: Configured `jsconfig.json` to allow Next.js and ESLint to resolve path aliases such as `@/models/...` and `@/lib/...` seamlessly in JavaScript files.
+3. **JS Scope Resolution & Hoisting Fixes**: Relocated block-scoped helper functions (like `showToast` in resources, `fetchTracker` in DSA tracker, and `fetchProfile` in hackathons) above `useEffect` hooks and fetch handlers, resolving JavaScript `ReferenceError` violations flagged by ESLint.
+4. **Build & Lint Verification**: Ran `npm run lint` which resolved with 0 errors, and successfully generated production routes using `npm run build` after removing stale build caches.
+5. **Dashboard Company Matching Sync**: Aligned the company readiness matching calculations on the landing dashboard page with the details tab (removed the 30% baseline offset and adjusted the strong match threshold to 80% to make it completely consistent with the Company Readiness Checker).
+
+---
+
+## 7. DSA Tracker Achievements Modal Layout and Spacing Adjustments
+
+### 📂 Modified Files:
+* **DSA Tracker Component**: [page.jsx](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/dashboard/dsa-tracker/page.jsx)
+
+### 💡 Details:
+1. **Modal Centering & Positioning**: Removed the redundant `overflow-y-auto` layout class on the parent overlay element that caused weird flexbox vertical alignment issues and pushed the modal down, and ensured standard viewport vertical and horizontal centering.
+2. **Padding and Spacing Reductions**: Reduced vertical padding of the card container from `p-6` to `p-4 sm:p-5` and adjusted `space-y-6` to `space-y-4` to tighten up the general form structure.
+3. **Input Heights and Inner Margins**: Updated Section 1 and Section 2 input fields from `p-2` to `py-1.5 px-2.5` to make them more compact vertically, and minimized label bottom margins to shrink the total form height to fit perfectly on standard viewports without excessive vertical scrolling.
+
+---
+
+## 8. Teammate Finder Backend and Database Integration
+
+### 📂 Created/Modified Files:
+* **Created Database Model**: [TeammatePost.js](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/models/TeammatePost.js)
+* **Created API Route**: [route.js](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/api/hackathons/teammates/route.js)
+* **Modified Frontend Component**: [page.jsx](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/dashboard/hackathons/page.jsx)
+
+### 💡 Details:
+1. **Dynamic Teammate Database Collection**: Created the `TeammatePost` model to dynamically save and load peer teammates recruitment posts in MongoDB instead of displaying static mock elements.
+2. **Classmate Posts REST API**: Implemented a Next.js API route that supports:
+   - `GET`: Returns the active classmate teammate posts sorted by newest first (with automated fallback seeding of sample posts if the DB collection is fresh and empty).
+   - `POST`: Validates credentials, queries the poster's college/branch from DB, and saves the new recruitment details.
+   - `DELETE`: Authorizes the request session and removes target posts from the collection.
+3. **Interactive UI Wiring**: Wired state, loader indicators, and a dialog modal to the "Post Team Recruitment" trigger in [page.jsx](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/dashboard/hackathons/page.jsx). Added inline delete actions visible only to the post's owner.
+
+---
+
+## 9. AI Resume Analyzer & Resume Readiness Module (Phase 13)
+
+### 📂 Created/Modified Files:
+* **Created Database Model**: [ResumeAnalysis.js](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/models/ResumeAnalysis.js)
+* **Created API Route**: [route.js](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/api/resume-analyzer/route.js)
+* **Created Frontend Page**: [page.jsx](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/dashboard/resume-analyzer/page.jsx)
+* **Modified Layout**: [layout.jsx](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/dashboard/layout.jsx)
+* **Modified Profile Schema**: [Profile.js](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/models/Profile.js)
+* **Modified Profile Page**: [page.jsx](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/dashboard/profile/page.jsx)
+* **Modified Profile API**: [route.js](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/api/profile/route.js)
+* **Modified Dashboard Main Page**: [page.jsx](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/dashboard/page.jsx)
+* **Modified Readiness Score Page**: [page.jsx](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/dashboard/readiness/page.jsx)
+* **Modified Analytics Pages**:
+  * [page.jsx](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/dashboard/analytics/page.jsx)
+* **Modified Legacy Checklist Redirect**: [page.jsx](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/dashboard/resume/page.jsx)
+* **Modified Admin Actions**: [route.js](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/api/admin/users/%5Bid%5D/route.js)
+
+### 💡 Details:
+1. **Offline Parsing Engines**: Installed and integrated `pdf-parse` and `mammoth` to handle buffer-based local text extraction from uploaded PDF and Word documents without external AI API dependencies.
+2. **Rule-Based Resume Parsing**: Implemented dynamic regex-based name, email, phone, LinkedIn, and GitHub link identification, alongside section-based chunk parsing for Education, Skills, Projects, Experience, and Achievements.
+3. **Double Scoring Engine**: Programmed Resume Readiness scoring (out of 100) aligned with strict weightages (contact details, projects, education, formatting etc.) and ATS Compatibility scoring (checking layout, standard headings, readability, keyword density).
+4. **Auto-Profile Synchronization**: Synced parsed contact details, skills, certifications, and projects automatically with the user's Profile collection in MongoDB. This updates calculations, roadmaps, and company checkers instantly without duplicate entry.
+5. **Interactive UI Module**: Implemented a responsive SaaS analyzer view at `/dashboard/resume-analyzer` containing radial gauges, upload drop zones, visual progress bars, priority cards (High/Medium/Low) for suggestions, and structured tabs for extracted blocks.
+6. **Placement Score Refactoring**: Updated the overall Placement Readiness Score across the dashboard, analytics, and readiness tabs to follow the new formula: Skills (25%), Projects (25%), DSA (20%), Resume Score (20%), and Certifications (10%).
