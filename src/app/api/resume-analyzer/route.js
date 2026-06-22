@@ -425,8 +425,10 @@ export async function GET(req) {
 
     await dbConnect();
     const latestAnalysis = await ResumeAnalysis.findOne({ userId }).select('-fileData');
+    const userDoc = await User.findById(userId).select('name email college branch');
+    const profileDoc = await Profile.findOne({ userId });
 
-    return NextResponse.json({ analysis: latestAnalysis });
+    return NextResponse.json({ analysis: latestAnalysis, user: userDoc, profile: profileDoc });
   } catch (error) {
     console.error('Error fetching resume analysis:', error);
     return NextResponse.json({ error: 'Failed to retrieve resume analysis' }, { status: 500 });
@@ -827,47 +829,9 @@ export async function POST(req) {
       { new: true, upsert: true }
     );
 
-    // PROFILE INTEGRATION & AUTO-SYNC (SECTION 11)
-    let profile = await Profile.findOne({ userId });
-    if (!profile) {
-      profile = new Profile({ userId });
-    }
-
-    // 1. Sync Skills
-    const currentSkillsLower = (profile.skills || []).map(s => s.toLowerCase().trim());
-    const skillsToMerge = parsedData.skills.filter(s => !currentSkillsLower.includes(s.toLowerCase().trim()));
-    if (skillsToMerge.length > 0) {
-      profile.skills = [...(profile.skills || []), ...skillsToMerge];
-    }
-
-    // 2. Sync Certifications
-    const currentCertsLower = (profile.certifications || []).map(c => c.toLowerCase().trim());
-    const certsToMerge = parsedData.certifications.filter(c => !currentCertsLower.includes(c.toLowerCase().trim()));
-    if (certsToMerge.length > 0) {
-      profile.certifications = [...(profile.certifications || []), ...certsToMerge];
-    }
-
-    // 3. Sync Projects
-    const currentProjectTitles = (profile.projects || []).map(p => p.title.toLowerCase().trim());
-    const projectsToMerge = parsedData.projects.filter(p => p.title && !currentProjectTitles.includes(p.title.toLowerCase().trim()));
-    if (projectsToMerge.length > 0) {
-      const mergedProjects = projectsToMerge.map(p => ({
-        title: p.title,
-        description: p.description || '',
-        technologies: p.technologies || []
-      }));
-      profile.projects = [...(profile.projects || []), ...mergedProjects];
-    }
-
-    // 4. Sync URLs
-    if (hasGithub && !profile.githubUrl) {
-      profile.githubUrl = parsedData.github || 'https://github.com';
-    }
-    if (hasLinkedin && !profile.linkedinUrl) {
-      profile.linkedinUrl = parsedData.linkedin || 'https://linkedin.com';
-    }
-
-    await profile.save();
+    // PROFILE INTEGRATION & AUTO-SYNC (SECTION 11) - REMOVED
+    // Phase 14: Profile sync is now handled by the /api/resume-analyzer/sync endpoint
+    // after the user reviews and confirms the changes.
 
     // Debug logging for developer mode (visible in console)
     if (process.env.NODE_ENV === 'development') {
@@ -882,7 +846,7 @@ ${hasLinkedin ? '✓' : '✗'} LinkedIn
     }
 
     return NextResponse.json({
-      message: 'Resume analysis and profile sync complete.',
+      message: 'Resume analysis complete. Ready for profile sync.',
       analysis: {
         _id: resumeAnalysisDoc._id,
         fileName: resumeAnalysisDoc.fileName,
@@ -897,7 +861,14 @@ ${hasLinkedin ? '✓' : '✗'} LinkedIn
         suggestions: resumeAnalysisDoc.suggestions,
         placementInsights: resumeAnalysisDoc.placementInsights,
         isManual: resumeAnalysisDoc.isManual
-      }
+      },
+      user: {
+        name: userDoc.name,
+        email: userDoc.email,
+        college: userDoc.college,
+        branch: userDoc.branch,
+      },
+      profile: profileDoc
     });
   } catch (error) {
     console.error('Error analyzing resume:', error);

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +54,15 @@ export default function ResumeAnalyzerPage() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
   const fileInputRef = useRef(null);
+  const router = useRouter();
+
+  // Phase 14 Sync Review State
+  const [showReviewScreen, setShowReviewScreen] = useState(false);
+  const [syncData, setSyncData] = useState({ user: null, profile: null });
+  const [syncSelections, setSyncSelections] = useState({
+    name: true, college: true, branch: true, githubUrl: true, linkedinUrl: true, skills: true, certifications: true, projects: true
+  });
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Manual entry state additions (Phase 13.1)
   const [showManualForm, setShowManualForm] = useState(false);
@@ -106,6 +116,7 @@ export default function ResumeAnalyzerPage() {
       const data = await res.json();
       if (data.analysis) {
         setAnalysis(data.analysis);
+        setSyncData({ user: data.user, profile: data.profile });
       }
     } catch (err) {
       showToast(err.message || "Failed to load resume details.", "error");
@@ -217,11 +228,12 @@ ${hasLinkedin ? '✓' : '✗'} LinkedIn
 
       const data = await res.json();
       setUploadProgress(100);
-      setUploadStage("Analysis Complete!");
+      setUploadStage("Analysis Complete! Loading Review Screen...");
       await new Promise(r => setTimeout(r, 400));
       
       setAnalysis(data.analysis);
-      showToast("Resume parsed and Profile synced automatically!", "success");
+      setSyncData({ user: data.user, profile: data.profile });
+      setShowReviewScreen(true);
       setSelectedFile(null);
     } catch (err) {
       setErrorMsg(err.message || "An unexpected parser error occurred.");
@@ -364,11 +376,12 @@ ${hasLinkedin ? '✓' : '✗'} LinkedIn
 
       const data = await res.json();
       setUploadProgress(100);
-      setUploadStage("Analysis Complete!");
+      setUploadStage("Analysis Complete! Loading Review Screen...");
       await new Promise(r => setTimeout(r, 400));
 
       setAnalysis(data.analysis);
-      showToast("Manual resume data saved and profile synced!", "success");
+      setSyncData({ user: data.user, profile: data.profile });
+      setShowReviewScreen(true);
       setShowManualForm(false);
       resetManualForm();
     } catch (err) {
@@ -379,6 +392,46 @@ ${hasLinkedin ? '✓' : '✗'} LinkedIn
       setUploadStage("");
     }
   };
+
+  const handleSync = async (skip = false) => {
+    if (skip) {
+      setShowReviewScreen(false);
+      showToast("Sync skipped. Showing analysis results.", "success");
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      const payload = {};
+      if (syncSelections.name) payload.name = analysis.parsedData.name;
+      if (syncSelections.college && analysis.parsedData.education[0]) payload.college = analysis.parsedData.education[0].split(',')[0] || '';
+      if (syncSelections.branch && analysis.parsedData.education[0]) payload.branch = analysis.parsedData.education[0].split(',')[1] || '';
+      if (syncSelections.githubUrl) payload.githubUrl = analysis.parsedData.github;
+      if (syncSelections.linkedinUrl) payload.linkedinUrl = analysis.parsedData.linkedin;
+      if (syncSelections.skills) payload.skills = analysis.parsedData.skills;
+      if (syncSelections.certifications) payload.certifications = analysis.parsedData.certifications;
+      if (syncSelections.projects) payload.projects = analysis.parsedData.projects;
+
+      const res = await fetch("/api/resume-analyzer/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error("Sync failed");
+      
+      setShowReviewScreen(false);
+      showToast("Profile synchronized successfully!", "success");
+      router.refresh();
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const toggleSelection = (key) => setSyncSelections(prev => ({ ...prev, [key]: !prev[key] }));
+  const toggleAll = (val) => setSyncSelections({
+    name: val, college: val, branch: val, githubUrl: val, linkedinUrl: val, skills: val, certifications: val, projects: val
+  });
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -912,8 +965,148 @@ ${hasLinkedin ? '✓' : '✗'} LinkedIn
           )}
         </Card>
 
-        {analysis && (
+        </Card>
+
+        {/* REVIEW SCREEN */}
+        {showReviewScreen && analysis && (
+          <Card className="glass-panel p-6 md:p-8 animate-slide-up border-indigo-500/30">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
+              <div>
+                <h2 className="text-2xl font-extrabold text-white flex items-center gap-2">
+                  <Sparkles className="h-6 w-6 text-indigo-400" />
+                  Review Profile Updates
+                </h2>
+                <p className="text-sm text-slate-400 mt-1">
+                  We've extracted information from your resume. Select the details you'd like to sync to your SkillBridge profile.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => toggleAll(true)} className="border-white/10 hover:bg-white/5 text-xs text-slate-300">Select All</Button>
+                <Button variant="outline" onClick={() => toggleAll(false)} className="border-white/10 hover:bg-white/5 text-xs text-slate-300">Deselect All</Button>
+              </div>
+            </div>
+
+            <div className="mt-8 space-y-6">
+              {/* Compare Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Basic Details */}
+                <div className="space-y-4 p-5 bg-slate-900/30 rounded-xl border border-white/5 relative">
+                  <div className="absolute top-4 right-4 flex items-center gap-2">
+                    <input type="checkbox" checked={syncSelections.name} onChange={() => toggleSelection('name')} className="w-4 h-4 rounded border-white/10 bg-slate-950 text-indigo-500" />
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
+                    <User className="h-4 w-4 text-indigo-400" /> Basic Details
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-slate-500">Name</span>
+                      <div className="text-right">
+                        <div className="text-xs text-slate-400 line-through">{syncData.user?.name || 'Empty'}</div>
+                        <div className="text-sm font-bold text-emerald-400">{analysis.parsedData.name || 'Not Found'}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Social Links */}
+                <div className="space-y-4 p-5 bg-slate-900/30 rounded-xl border border-white/5 relative">
+                  <div className="absolute top-4 right-4 flex items-center gap-2">
+                    <input type="checkbox" checked={syncSelections.githubUrl} onChange={() => toggleSelection('githubUrl')} className="w-4 h-4 rounded border-white/10 bg-slate-950 text-indigo-500" />
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
+                    <Github className="h-4 w-4 text-indigo-400" /> Social Links
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-slate-500">GitHub</span>
+                      <div className="text-right">
+                        <div className="text-xs text-slate-400 line-through truncate max-w-[150px]">{syncData.profile?.githubUrl || 'Empty'}</div>
+                        <div className="text-sm font-bold text-emerald-400 truncate max-w-[150px]">{analysis.parsedData.github || 'Not Found'}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Skills */}
+                <div className="space-y-4 p-5 bg-slate-900/30 rounded-xl border border-white/5 relative md:col-span-2">
+                  <div className="absolute top-4 right-4 flex items-center gap-2">
+                    <input type="checkbox" checked={syncSelections.skills} onChange={() => toggleSelection('skills')} className="w-4 h-4 rounded border-white/10 bg-slate-950 text-indigo-500" />
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
+                    <Layers className="h-4 w-4 text-indigo-400" /> Skills
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-bold block mb-2">Current Profile</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {syncData.profile?.skills?.map(s => (
+                          <span key={s} className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">{s}</span>
+                        )) || <span className="text-xs text-slate-500 italic">None</span>}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-emerald-500 uppercase font-bold block mb-2">To Merge</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {analysis.parsedData.skills?.map(s => (
+                          <span key={s} className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Projects & Certifications */}
+                <div className="space-y-4 p-5 bg-slate-900/30 rounded-xl border border-white/5 relative">
+                  <div className="absolute top-4 right-4 flex items-center gap-2">
+                    <input type="checkbox" checked={syncSelections.projects} onChange={() => toggleSelection('projects')} className="w-4 h-4 rounded border-white/10 bg-slate-950 text-indigo-500" />
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
+                    <Code className="h-4 w-4 text-indigo-400" /> Projects
+                  </h3>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400">Current: {syncData.profile?.projects?.length || 0}</span>
+                    <span className="text-emerald-400 font-bold">+ {analysis.parsedData.projects?.length || 0} to merge</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4 p-5 bg-slate-900/30 rounded-xl border border-white/5 relative">
+                  <div className="absolute top-4 right-4 flex items-center gap-2">
+                    <input type="checkbox" checked={syncSelections.certifications} onChange={() => toggleSelection('certifications')} className="w-4 h-4 rounded border-white/10 bg-slate-950 text-indigo-500" />
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
+                    <Award className="h-4 w-4 text-indigo-400" /> Certifications
+                  </h3>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400">Current: {syncData.profile?.certifications?.length || 0}</span>
+                    <span className="text-emerald-400 font-bold">+ {analysis.parsedData.certifications?.length || 0} to merge</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-white/5 flex justify-end gap-3">
+              <Button disabled={isSyncing} variant="outline" onClick={() => handleSync(true)} className="border-white/10 text-slate-300 hover:bg-white/5">
+                Skip Sync
+              </Button>
+              <Button disabled={isSyncing} onClick={() => handleSync(false)} className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold">
+                {isSyncing ? "Syncing..." : "Confirm & Sync"}
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Existing Analysis Results */}
+        {!showReviewScreen && analysis && (
           <div className="space-y-8 animate-slide-up">
+            <div className="flex justify-end mb-4">
+               <Button onClick={() => setShowReviewScreen(true)} variant="outline" className="border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 text-xs">
+                  <RotateCcw className="h-3.5 w-3.5 mr-2" /> Review Sync Options
+               </Button>
+            </div>
+            
             {/* INTERACTIVE SCORE GAUGES */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* readiness score */}

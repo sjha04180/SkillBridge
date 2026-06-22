@@ -204,3 +204,19 @@ This document details all the enhancements and updates implemented in the SkillB
 4. **Flexible Heading Matching**: Updated heading-based extraction to support custom variations for Experience (`Experience`, `Activities`, `Experience & Activities`, `Internships`, `Participation`, `Open Source`) and Certifications (`Certifications`, `Courses`, `Training`, `Certificates`).
 5. **No-Zero Content Scoring**: Ensured that Readiness and ATS scores are computed directly from extracted content matches (rather than assigning zero simply because a heading is absent).
 6. **Developer Mode Debug Logs**: Implemented a detailed extraction check-log output to both the server-side logs and a client-side visual debug card + browser console logging statement when running in development mode.
+
+---
+
+## 13. Phase 14 – Resume to Profile Auto-Sync
+
+### 📂 Created/Modified Files:
+* **Created API Route**: [route.js](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/api/resume-analyzer/sync/route.js)
+* **Modified Backend API Route**: [route.js](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/api/resume-analyzer/route.js)
+* **Modified Frontend Component**: [page.jsx](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/dashboard/resume-analyzer/page.jsx)
+
+### 💡 Details:
+1. **Interactive Review Screen**: Built a comprehensive glassmorphic side-by-side comparison screen (`Current Profile Data` vs `Resume Extracted Data`) that renders immediately after parsing or manual submission.
+2. **Selective Auto-Sync**: Allows the user to choose to "Accept All Changes", pick and choose "Select Individual Changes" using active checklist toggle state checkboxes for each field (Name, College, Branch, Github, LinkedIn, Skills, Certifications, and Projects), or "Skip Sync".
+3. **Atomic API Integration**: Programmed a secure POST endpoint at `/api/resume-analyzer/sync` that merges incoming arrays and objects with the existing database documents while avoiding duplicates via case-insensitive matching.
+4. **Dynamic Score Recalculation**: Utilized Next.js dynamic routing updates (`router.refresh()`) to immediately recalculate the student's Career Roadmap, Skill Gap, Company Readiness, and Placement Readiness Scores without page refreshes.
+
