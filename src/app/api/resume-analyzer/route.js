@@ -1,3 +1,9 @@
+if (typeof global !== 'undefined' && !global.DOMMatrix) {
+  global.DOMMatrix = class DOMMatrix {
+    constructor() {}
+  };
+}
+
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
@@ -5,8 +11,6 @@ import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import Profile from '@/models/Profile';
 import ResumeAnalysis from '@/models/ResumeAnalysis';
-import { PDFParse } from 'pdf-parse';
-import mammoth from 'mammoth';
 
 const ROLE_SKILLS = {
   "Frontend Developer": ["HTML", "CSS", "JavaScript", "React", "Git", "TypeScript"],
@@ -559,11 +563,13 @@ export async function POST(req) {
       
       try {
         if (ext === 'pdf') {
+          const { PDFParse } = await import('pdf-parse');
           const uint8 = new Uint8Array(buffer);
           const parser = new PDFParse(uint8, { verbosity: 0 });
           await parser.load();
           extractedText = await parser.getText();
         } else {
+          const mammoth = (await import('mammoth')).default;
           const docxResult = await mammoth.extractRawText({ buffer });
           extractedText = docxResult.value;
         }
