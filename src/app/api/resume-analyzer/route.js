@@ -160,7 +160,7 @@ function parseContactDetails(text, userDoc) {
   const linkedinMatch = text.match(linkedinRegex);
   const githubMatch = text.match(githubRegex);
 
-  // Extract Name from first 3 non-empty lines
+  // Extract Name from first 5 non-empty lines
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   let parsedName = '';
   for (let i = 0; i < Math.min(5, lines.length); i++) {
@@ -229,6 +229,24 @@ function parseProjects(projectLines, rawText) {
         liveLink: ''
       });
     });
+    
+    // Look for generic project descriptions in raw text if none found
+    if (projects.length === 0) {
+      const lines = rawText.split('\n');
+      let pCount = 1;
+      for (const line of lines) {
+        if (line.match(/(developed|built|designed|implemented)\s+a?\s*([a-zA-Z0-9_\-\s]{3,30})/i) && line.length > 20) {
+          projects.push({
+            title: `Project ${pCount++}`,
+            description: line.trim(),
+            technologies: [],
+            githubLink: '',
+            liveLink: ''
+          });
+          if (pCount > 3) break;
+        }
+      }
+    }
     return projects;
   }
 
@@ -346,7 +364,7 @@ export async function GET(req) {
     const userId = session.user.id;
 
     await dbConnect();
-    const latestAnalysis = await ResumeAnalysis.findOne({ userId }).select('-fileData'); // Exclude heavy file buffer
+    const latestAnalysis = await ResumeAnalysis.findOne({ userId }).select('-fileData');
 
     return NextResponse.json({ analysis: latestAnalysis });
   } catch (error) {
@@ -363,22 +381,7 @@ export async function POST(req) {
     }
 
     const userId = session.user.id;
-
-    const formData = await req.formData();
-    const file = formData.get('file');
-
-    if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
-    }
-
-    const fileName = file.name;
-    const fileSize = file.size;
-    const fileType = file.type;
-
-    const ext = fileName.split('.').pop().toLowerCase();
-    if (ext !== 'pdf' && ext !== 'docx') {
-      return NextResponse.json({ error: 'Only PDF (.pdf) and Word (.docx) files are allowed.' }, { status: 400 });
-    }
+    const contentType = req.headers.get('content-type') || '';
 
     await dbConnect();
     const userDoc = await User.findById(userId);
@@ -390,110 +393,233 @@ export async function POST(req) {
 
     const targetRole = profileDoc?.targetRole || '';
 
-    // Array Buffer read
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    
-    // Parse Text
+    // Variables for parsing outcomes
+    let isManual = false;
+    let fileName = '';
+    let fileSize = 0;
+    let fileType = '';
+    let fileData = '';
     let extractedText = '';
-    try {
-      if (ext === 'pdf') {
-        const uint8 = new Uint8Array(buffer);
-        const parser = new PDFParse(uint8, { verbosity: 0 });
-        await parser.load();
-        extractedText = await parser.getText();
-      } else {
-        const docxResult = await mammoth.extractRawText({ buffer });
-        extractedText = docxResult.value;
+    let parsedData = {};
+    let sections = { contact: [], education: [], skills: [], projects: [], experience: [], certifications: [], achievements: [] };
+
+    if (contentType.includes('application/json')) {
+      isManual = true;
+      const body = await req.json();
+      const {
+        name,
+        college,
+        branch,
+        cgpa,
+        skills,
+        certifications,
+        projects,
+        githubUrl,
+        linkedinUrl,
+        experience
+      } = body;
+
+      parsedData = {
+        name: name || userDoc.name || '',
+        email: userDoc.email || '',
+        phone: body.phone || '',
+        linkedin: linkedinUrl || '',
+        github: githubUrl || '',
+        education: [`${college || userDoc.college || 'Engineering College'}, ${branch || userDoc.branch || 'Engineering Branch'}${cgpa ? ` • CGPA: ${cgpa}` : ''}`],
+        skills: Array.isArray(skills) ? skills : [],
+        projects: Array.isArray(projects) ? projects.map(p => ({
+          title: p.title || '',
+          description: p.description || '',
+          technologies: Array.isArray(p.technologies) ? p.technologies : typeof p.technologies === 'string' ? p.technologies.split(',').map(t => t.trim()) : [],
+          githubLink: p.githubLink || '',
+          liveLink: p.liveLink || ''
+        })) : [],
+        certifications: Array.isArray(certifications) ? certifications : [],
+        experience: typeof experience === 'string' ? experience.split('\n').filter(Boolean) : Array.isArray(experience) ? experience : [],
+        achievements: Array.isArray(body.achievements) ? body.achievements : []
+      };
+
+      // Construct dummy text for score evaluations
+      extractedText = `
+        ${parsedData.name}
+        ${parsedData.email}
+        ${parsedData.phone}
+        GitHub: ${parsedData.github}
+        LinkedIn: ${parsedData.linkedin}
+        
+        EDUCATION
+        ${parsedData.education.join('\n')}
+        
+        SKILLS
+        ${parsedData.skills.join(', ')}
+        
+        PROJECTS
+        ${parsedData.projects.map(p => `${p.title}: ${p.description} Tech: ${p.technologies.join(', ')} GitHub: ${p.githubLink} Live: ${p.liveLink}`).join('\n')}
+        
+        EXPERIENCE
+        ${parsedData.experience.join('\n')}
+        
+        CERTIFICATIONS
+        ${parsedData.certifications.join('\n')}
+        
+        ACHIEVEMENTS
+        ${parsedData.achievements.join('\n')}
+      `;
+
+      sections = {
+        contact: [parsedData.name, parsedData.email, parsedData.phone, parsedData.linkedin, parsedData.github].filter(Boolean),
+        education: parsedData.education,
+        skills: parsedData.skills,
+        projects: parsedData.projects.map(p => p.title),
+        experience: parsedData.experience,
+        certifications: parsedData.certifications,
+        achievements: parsedData.achievements
+      };
+    } else {
+      // Multipart/Form-data File upload processing
+      const formData = await req.formData();
+      const file = formData.get('file');
+
+      if (!file) {
+        return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
       }
-    } catch (parseError) {
-      console.error('Text extraction failed:', parseError);
-      // Fallback: simple text parsing from buffer or placeholder
-      extractedText = buffer.toString('utf-8').replace(/[^\x20-\x7E\n]/g, '');
-      if (extractedText.length < 50) {
-        throw new Error('Could not extract text. File might be corrupted or empty.');
+
+      fileName = file.name;
+      fileSize = file.size;
+      fileType = file.type;
+
+      const ext = fileName.split('.').pop().toLowerCase();
+      if (ext !== 'pdf' && ext !== 'docx') {
+        return NextResponse.json({ error: 'Only PDF (.pdf) and Word (.docx) files are allowed.' }, { status: 400 });
       }
+
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      
+      try {
+        if (ext === 'pdf') {
+          const uint8 = new Uint8Array(buffer);
+          const parser = new PDFParse(uint8, { verbosity: 0 });
+          await parser.load();
+          extractedText = await parser.getText();
+        } else {
+          const docxResult = await mammoth.extractRawText({ buffer });
+          extractedText = docxResult.value;
+        }
+      } catch (parseError) {
+        console.error('Text extraction failed:', parseError);
+        extractedText = buffer.toString('utf-8').replace(/[^\x20-\x7E\n]/g, '');
+        if (extractedText.length < 50) {
+          throw new Error('Could not extract text. File might be corrupted or empty.');
+        }
+      }
+
+      fileData = buffer.toString('base64');
+      
+      sections = extractSections(extractedText);
+      const parsedContact = parseContactDetails(extractedText, userDoc);
+      const parsedSkills = parseSkills(extractedText);
+      const parsedProjects = parseProjects(sections.projects, extractedText);
+      const parsedCerts = parseCertifications(sections.certifications, extractedText);
+      const parsedAchs = parseAchievements(sections.achievements, extractedText);
+      const parsedExp = sections.experience.length > 0 ? sections.experience : sections.contact.filter(line => line.toLowerCase().includes('experience') || line.toLowerCase().includes('intern'));
+
+      parsedData = {
+        name: parsedContact.name,
+        email: parsedContact.email,
+        phone: parsedContact.phone,
+        linkedin: parsedContact.linkedin,
+        github: parsedContact.github,
+        education: sections.education.length > 0 ? sections.education.slice(0, 5) : [`${userDoc.college || 'Engineering College'}, ${userDoc.branch || 'Engineering Branch'}`],
+        skills: parsedSkills,
+        projects: parsedProjects,
+        certifications: parsedCerts,
+        experience: parsedExp.slice(0, 8),
+        achievements: parsedAchs.slice(0, 6)
+      };
     }
 
-    // Run Parser Rules
-    const sections = extractSections(extractedText);
-    const parsedContact = parseContactDetails(extractedText, userDoc);
-    const parsedSkills = parseSkills(extractedText);
-    const parsedProjects = parseProjects(sections.projects, extractedText);
-    const parsedCerts = parseCertifications(sections.certifications, extractedText);
-    const parsedAchs = parseAchievements(sections.achievements, extractedText);
-    const parsedExp = sections.experience.length > 0 ? sections.experience : sections.contact.filter(line => line.toLowerCase().includes('experience') || line.toLowerCase().includes('intern'));
+    // --- IMPROVED SCORING ENGINE (SCORING IMPROVEMENTS - PHASE 13.1) ---
+    // Do not assign 0 score simply because a section heading is not detected. Use fallback detection rules.
+    const hasEducationInText = extractedText.toLowerCase().match(/(education|college|university|btech|degree|cgpa|gpa)/i);
+    const hasSkillsInText = parsedData.skills.length > 0 || extractedText.toLowerCase().match(/(html|css|js|javascript|react|node|mongodb|python|java|git|sql|dbms)/i);
+    const hasProjectsInText = parsedData.projects.length > 0 || extractedText.toLowerCase().match(/(project|developed|built|designed|implemented|github\.com\/)/i);
+    const hasCertificationsInText = parsedData.certifications.length > 0 || extractedText.toLowerCase().match(/(certified|certification|credential|course|udemy|coursera)/i);
+    const hasExperienceInText = parsedData.experience.length > 0 || extractedText.toLowerCase().match(/(experience|internship|intern|volunteer|employment|work)/i);
 
-    const parsedData = {
-      name: parsedContact.name,
-      email: parsedContact.email,
-      phone: parsedContact.phone,
-      linkedin: parsedContact.linkedin,
-      github: parsedContact.github,
-      education: sections.education.length > 0 ? sections.education.slice(0, 5) : ['B.Tech in Engineering (Extracted from context)'],
-      skills: parsedSkills,
-      projects: parsedProjects,
-      certifications: parsedCerts,
-      experience: parsedExp.slice(0, 8),
-      achievements: parsedAchs.slice(0, 6)
-    };
-
-    // Calculate Score 1 (Resume Readiness Score - 100 points max)
+    // 1. Contact Information Points (10 pts)
     let contactPoints = 0;
-    if (parsedContact.phone) contactPoints += 4;
-    if (parsedContact.email) contactPoints += 4;
-    if (parsedContact.name) contactPoints += 2;
+    if (parsedData.phone) contactPoints += 4;
+    if (parsedData.email) contactPoints += 4;
+    if (parsedData.name) contactPoints += 2;
 
+    // 2. Education (10 pts)
     let educationPoints = 0;
-    if (parsedData.education.length > 0) educationPoints += 5;
-    if (extractedText.toLowerCase().match(/(cgpa|gpa|percentage|b\.tech|btech|bachelor|master)/)) educationPoints += 5;
+    if (parsedData.education.length > 0 || hasEducationInText) educationPoints += 5;
+    if (extractedText.toLowerCase().match(/(cgpa|gpa|percentage|b\.tech|btech|bachelor|master|cgpa:\s*\d|gpa:\s*\d)/)) educationPoints += 5;
 
+    // 3. Skills Section (15 pts)
     let skillsPoints = 0;
-    const skillsCount = parsedSkills.length;
+    const skillsCount = parsedData.skills.length;
     if (skillsCount >= 6) skillsPoints = 15;
     else if (skillsCount >= 3) skillsPoints = 10;
-    else if (skillsCount >= 1) skillsPoints = 5;
+    else if (skillsCount >= 1 || hasSkillsInText) skillsPoints = 5;
 
+    // 4. Projects Section (25 pts)
     let projectsPoints = 0;
-    const projectsCount = parsedProjects.length;
+    const projectsCount = parsedData.projects.length;
     if (projectsCount >= 2) projectsPoints = 25;
     else if (projectsCount === 1) projectsPoints = 12;
+    else if (hasProjectsInText) projectsPoints = 8; // fallback points for project context found
 
-    let certsPoints = parsedCerts.length > 0 ? 10 : 0;
-    let expPoints = parsedExp.length > 0 ? 10 : 0;
+    // 5. Certifications (10 pts)
+    let certsPoints = (parsedData.certifications.length > 0 || hasCertificationsInText) ? 10 : 0;
 
+    // 6. Experience (10 pts)
+    let expPoints = (parsedData.experience.length > 0 || hasExperienceInText) ? 10 : 0;
+
+    // 7. GitHub & LinkedIn Links (10 pts)
     let socialLinksPoints = 0;
-    if (parsedContact.github) socialLinksPoints += 5;
-    if (parsedContact.linkedin) socialLinksPoints += 5;
+    const hasGithub = parsedData.github || extractedText.toLowerCase().includes('github.com');
+    const hasLinkedin = parsedData.linkedin || extractedText.toLowerCase().includes('linkedin.com');
+    if (hasGithub) socialLinksPoints += 5;
+    if (hasLinkedin) socialLinksPoints += 5;
 
-    // Formatting quality heuristics:
+    // 8. Formatting Heuristics (10 pts)
     let formattingPoints = 0;
-    if (sections.education.length > 0) formattingPoints += 2;
-    if (sections.skills.length > 0) formattingPoints += 2;
-    if (sections.projects.length > 0) formattingPoints += 2;
-    if (sections.experience.length > 0) formattingPoints += 2;
-    if (extractedText.length > 400 && extractedText.length < 5000) formattingPoints += 2;
+    if (parsedData.education.length > 0 || hasEducationInText) formattingPoints += 2;
+    if (parsedData.skills.length > 0 || hasSkillsInText) formattingPoints += 2;
+    if (parsedData.projects.length > 0 || hasProjectsInText) formattingPoints += 2;
+    if (parsedData.experience.length > 0 || hasExperienceInText) formattingPoints += 2;
+    if (extractedText.length > 100) formattingPoints += 2;
 
     const readinessScore = contactPoints + educationPoints + skillsPoints + projectsPoints + certsPoints + expPoints + socialLinksPoints + formattingPoints;
 
-    // Calculate Score 2 (ATS score - 100 points max)
+    // ATS score (100 pts max)
     let atsStructurePoints = 0;
-    if (sections.education.length > 0) atsStructurePoints += 5;
-    if (sections.skills.length > 0) atsStructurePoints += 5;
-    if (sections.projects.length > 0) atsStructurePoints += 5;
-    if (sections.experience.length > 0) atsStructurePoints += 5;
-    if (sections.certifications.length > 0 || sections.achievements.length > 0) atsStructurePoints += 5;
+    if (parsedData.education.length > 0 || hasEducationInText) atsStructurePoints += 5;
+    if (parsedData.skills.length > 0 || hasSkillsInText) atsStructurePoints += 5;
+    if (parsedData.projects.length > 0 || hasProjectsInText) atsStructurePoints += 5;
+    if (parsedData.experience.length > 0 || hasExperienceInText) atsStructurePoints += 5;
+    if (parsedData.certifications.length > 0 || parsedData.achievements.length > 0 || hasCertificationsInText) atsStructurePoints += 5;
 
     let atsHeadingsPoints = 0;
     const headings = ['education', 'skills', 'experience', 'projects'];
     headings.forEach(h => {
-      if (extractedText.toLowerCase().includes(h)) atsHeadingsPoints += 6.25;
+      const headingFound = extractedText.toLowerCase().includes(h);
+      let contentFound = false;
+      if (h === 'education' && (parsedData.education.length > 0 || hasEducationInText)) contentFound = true;
+      if (h === 'skills' && (parsedData.skills.length > 0 || hasSkillsInText)) contentFound = true;
+      if (h === 'experience' && (parsedData.experience.length > 0 || hasExperienceInText)) contentFound = true;
+      if (h === 'projects' && (parsedData.projects.length > 0 || hasProjectsInText)) contentFound = true;
+      
+      if (headingFound || contentFound) atsHeadingsPoints += 6.25;
     });
 
     let atsContactPoints = 0;
-    if (parsedContact.email) atsContactPoints += 5;
-    if (parsedContact.phone) atsContactPoints += 5;
-    if (parsedContact.linkedin || parsedContact.github) atsContactPoints += 5;
+    if (parsedData.email) atsContactPoints += 5;
+    if (parsedData.phone) atsContactPoints += 5;
+    if (hasLinkedin || hasGithub) atsContactPoints += 5;
 
     let atsKeywordPoints = 0;
     const coreKeywords = ['development', 'system', 'software', 'management', 'database', 'cloud', 'design', 'testing', 'programming', 'engineering'];
@@ -503,84 +629,81 @@ export async function POST(req) {
     });
     atsKeywordPoints = Math.min(25, matchesCount * 2.5);
 
-    let atsReadabilityPoints = 10; // start high
+    let atsReadabilityPoints = 10;
     if (extractedText.includes('???') || extractedText.includes('NaN')) atsReadabilityPoints -= 5;
-    if (extractedText.length < 300) atsReadabilityPoints -= 5;
+    if (extractedText.length < 150) atsReadabilityPoints -= 5;
 
     const atsScore = atsStructurePoints + atsHeadingsPoints + atsContactPoints + atsKeywordPoints + atsReadabilityPoints;
 
     // Check Missing Sections
     const missingSections = [];
-    if (sections.education.length === 0) missingSections.push('Education');
-    if (sections.skills.length === 0) missingSections.push('Skills');
-    if (sections.projects.length === 0) missingSections.push('Projects');
-    if (sections.experience.length === 0) missingSections.push('Experience');
-    if (parsedCerts.length === 0) missingSections.push('Certifications');
-    if (parsedAchs.length === 0) missingSections.push('Achievements');
-    if (!parsedContact.linkedin) missingSections.push('LinkedIn Profile');
-    if (!parsedContact.github) missingSections.push('GitHub Profile');
+    if (parsedData.education.length === 0 && !hasEducationInText) missingSections.push('Education');
+    if (parsedData.skills.length === 0 && !hasSkillsInText) missingSections.push('Skills');
+    if (parsedData.projects.length === 0 && !hasProjectsInText) missingSections.push('Projects');
+    if (parsedData.experience.length === 0 && !hasExperienceInText) missingSections.push('Experience');
+    if (parsedData.certifications.length === 0 && !hasCertificationsInText) missingSections.push('Certifications');
+    if (parsedData.achievements.length === 0) missingSections.push('Achievements');
+    if (!hasLinkedin) missingSections.push('LinkedIn Profile');
+    if (!hasGithub) missingSections.push('GitHub Profile');
 
     // Skill Gap Comparison
     const requiredSkills = ROLE_SKILLS[targetRole] || [];
-    const userSkillsLower = parsedSkills.map(s => s.toLowerCase().trim());
+    const userSkillsLower = parsedData.skills.map(s => s.toLowerCase().trim());
     const acquiredSkills = requiredSkills.filter(s => userSkillsLower.includes(s.toLowerCase().trim()));
     const missingSkills = requiredSkills.filter(s => !userSkillsLower.includes(s.toLowerCase().trim()));
 
-    // Project Quality Analysis
+    // Project Quality Analysis (rule-based checks - Section 7)
     let projectStrengthScore = 0;
     const projSuggestions = [];
     if (projectsCount > 0) {
       projectStrengthScore += Math.min(30, projectsCount * 15);
       
-      const hasTech = parsedProjects.every(p => p.technologies.length > 0);
+      const hasTech = parsedData.projects.every(p => p.technologies.length > 0);
       if (hasTech) projectStrengthScore += 20;
-      else projSuggestions.push('Add technology tags to all projects.');
+      else projSuggestions.push('Add technology stack details to all projects.');
 
-      const hasGit = parsedProjects.some(p => p.githubLink);
+      const hasGit = parsedData.projects.some(p => p.githubLink);
       if (hasGit) projectStrengthScore += 20;
       else projSuggestions.push('Add GitHub links to projects.');
 
-      const hasLive = parsedProjects.some(p => p.liveLink);
+      const hasLive = parsedData.projects.some(p => p.liveLink);
       if (hasLive) projectStrengthScore += 15;
-      else projSuggestions.push('Include deployment/live links.');
+      else projSuggestions.push('Include live deployment links.');
 
-      const hasOutcomes = parsedProjects.some(p => p.description && p.description.match(/(%|\d+x|\d+ms|improved|increased|reduced|saved)/i));
+      const hasOutcomes = parsedData.projects.some(p => p.description && p.description.match(/(%|\d+x|\d+ms|improved|increased|reduced|saved|users)/i));
       if (hasOutcomes) projectStrengthScore += 15;
-      else projSuggestions.push('Include measurable outcomes in project bullet points.');
+      else projSuggestions.push('Add quantified achievements and measurable outcomes.');
 
-      const shortDesc = parsedProjects.some(p => !p.description || p.description.length < 30);
+      const shortDesc = parsedData.projects.some(p => !p.description || p.description.length < 35);
       if (shortDesc) {
-        projSuggestions.push('Improve project descriptions (add more details).');
+        projSuggestions.push('Improve project descriptions (add more context).');
       }
     } else {
-      projSuggestions.push('Add target role relevant projects (at least 2).');
+      projSuggestions.push('Add more role-relevant projects (at least 2).');
     }
 
-    // Recommendation Cards with Priority Levels
+    // Recommendation Cards with Priority Levels (Section 8)
     const suggestions = [];
-    if (!parsedContact.github) {
-      suggestions.push({ text: 'Add GitHub profile URL to contact information.', priority: 'High', category: 'Links' });
+    if (!hasGithub) {
+      suggestions.push({ text: 'Add GitHub profile URL.', priority: 'High', category: 'Links' });
     }
-    if (!parsedContact.linkedin) {
-      suggestions.push({ text: 'Add LinkedIn profile URL for recruiter validation.', priority: 'High', category: 'Links' });
+    if (!hasLinkedin) {
+      suggestions.push({ text: 'Add LinkedIn profile URL.', priority: 'High', category: 'Links' });
     }
     if (projectsCount < 2) {
-      suggestions.push({ text: 'Add at least two technical projects with full descriptions.', priority: 'High', category: 'Projects' });
+      suggestions.push({ text: 'Add more projects (minimum 2 recommended).', priority: 'High', category: 'Projects' });
     }
-    if (skillsCount < 5) {
-      suggestions.push({ text: 'Add more core technical skills and tools matching target role.', priority: 'High', category: 'Skills' });
+    if (parsedData.skills.length < 5) {
+      suggestions.push({ text: 'Add more technical skills and frameworks.', priority: 'High', category: 'Skills' });
     }
-    if (parsedCerts.length === 0) {
-      suggestions.push({ text: 'Add at least one professional certification.', priority: 'Medium', category: 'Certifications' });
-    }
-    if (parsedAchs.length === 0) {
-      suggestions.push({ text: 'Add accomplishments or competitive programming stats.', priority: 'Low', category: 'Achievements' });
+    if (parsedData.certifications.length === 0 && !hasCertificationsInText) {
+      suggestions.push({ text: 'Add professional certifications section.', priority: 'Medium', category: 'Certifications' });
     }
     if (missingSkills.length > 0) {
-      suggestions.push({ text: `Acquire target role skills: ${missingSkills.slice(0, 3).join(', ')}.`, priority: 'Medium', category: 'Skills' });
+      suggestions.push({ text: `Acquire missing gap skills: ${missingSkills.slice(0, 3).join(', ')}.`, priority: 'Medium', category: 'Skills' });
     }
 
-    // Placement Insights
+    // Placement Insights (Section 9)
     const placementInsights = [];
     if (targetRole) {
       if (missingSkills.length === 0) {
@@ -592,48 +715,59 @@ export async function POST(req) {
     if (projectStrengthScore >= 75) {
       placementInsights.push('Projects section is excellent.');
     } else {
-      placementInsights.push('Projects section can be reinforced by adding repository and deployment links.');
+      placementInsights.push('Adding project github or deployment links will boost score.');
     }
-    if (parsedCerts.length === 0) {
+    if (parsedData.certifications.length === 0 && !hasCertificationsInText) {
       placementInsights.push('Certifications section is weak.');
     }
-    if (!parsedContact.github) {
-      placementInsights.push('GitHub profile should be added to demonstrate practical coding skills.');
+    if (!hasGithub) {
+      placementInsights.push('GitHub profile should be added.');
     }
     if (projectsCount < 2) {
-      placementInsights.push('Adding one major development project may increase readiness score significantly.');
+      placementInsights.push('Adding one major project may increase readiness score.');
     }
 
     // Save Resume Analysis to MongoDB
-    const base64Data = buffer.toString('base64');
+    const updatePayload = {
+      isManual,
+      extractedText,
+      parsedData,
+      readinessScore: Math.round(readinessScore),
+      atsScore: Math.round(atsScore),
+      missingSections,
+      targetRole,
+      skillGap: {
+        acquired: acquiredSkills,
+        missing: missingSkills
+      },
+      projectAnalysis: {
+        strengthScore: Math.round(projectStrengthScore),
+        suggestions: projSuggestions
+      },
+      suggestions,
+      placementInsights
+    };
+
+    if (!isManual) {
+      updatePayload.fileName = fileName;
+      updatePayload.fileSize = fileSize;
+      updatePayload.fileType = fileType;
+      updatePayload.fileData = fileData;
+    } else {
+      // Clear legacy file records if manually completed
+      updatePayload.fileName = 'manual_entry';
+      updatePayload.fileSize = 0;
+      updatePayload.fileType = 'application/json';
+      updatePayload.fileData = 'manual';
+    }
+
     const resumeAnalysisDoc = await ResumeAnalysis.findOneAndUpdate(
       { userId },
-      {
-        fileName,
-        fileSize,
-        fileType,
-        fileData: base64Data,
-        extractedText,
-        parsedData,
-        readinessScore: Math.round(readinessScore),
-        atsScore: Math.round(atsScore),
-        missingSections,
-        targetRole,
-        skillGap: {
-          acquired: acquiredSkills,
-          missing: missingSkills
-        },
-        projectAnalysis: {
-          strengthScore: Math.round(projectStrengthScore),
-          suggestions: projSuggestions
-        },
-        suggestions,
-        placementInsights
-      },
+      updatePayload,
       { new: true, upsert: true }
     );
 
-    // AUTOMATIC SYNCHRONIZATION WITH USER PROFILE (SECTION 11)
+    // PROFILE INTEGRATION & AUTO-SYNC (SECTION 11)
     let profile = await Profile.findOne({ userId });
     if (!profile) {
       profile = new Profile({ userId });
@@ -641,21 +775,21 @@ export async function POST(req) {
 
     // 1. Sync Skills
     const currentSkillsLower = (profile.skills || []).map(s => s.toLowerCase().trim());
-    const skillsToMerge = parsedSkills.filter(s => !currentSkillsLower.includes(s.toLowerCase().trim()));
+    const skillsToMerge = parsedData.skills.filter(s => !currentSkillsLower.includes(s.toLowerCase().trim()));
     if (skillsToMerge.length > 0) {
       profile.skills = [...(profile.skills || []), ...skillsToMerge];
     }
 
     // 2. Sync Certifications
     const currentCertsLower = (profile.certifications || []).map(c => c.toLowerCase().trim());
-    const certsToMerge = parsedCerts.filter(c => !currentCertsLower.includes(c.toLowerCase().trim()));
+    const certsToMerge = parsedData.certifications.filter(c => !currentCertsLower.includes(c.toLowerCase().trim()));
     if (certsToMerge.length > 0) {
       profile.certifications = [...(profile.certifications || []), ...certsToMerge];
     }
 
     // 3. Sync Projects
     const currentProjectTitles = (profile.projects || []).map(p => p.title.toLowerCase().trim());
-    const projectsToMerge = parsedProjects.filter(p => p.title && !currentProjectTitles.includes(p.title.toLowerCase().trim()));
+    const projectsToMerge = parsedData.projects.filter(p => p.title && !currentProjectTitles.includes(p.title.toLowerCase().trim()));
     if (projectsToMerge.length > 0) {
       const mergedProjects = projectsToMerge.map(p => ({
         title: p.title,
@@ -666,17 +800,17 @@ export async function POST(req) {
     }
 
     // 4. Sync URLs
-    if (parsedContact.github && !profile.githubUrl) {
-      profile.githubUrl = parsedContact.github;
+    if (hasGithub && !profile.githubUrl) {
+      profile.githubUrl = parsedData.github || 'https://github.com';
     }
-    if (parsedContact.linkedin && !profile.linkedinUrl) {
-      profile.linkedinUrl = parsedContact.linkedin;
+    if (hasLinkedin && !profile.linkedinUrl) {
+      profile.linkedinUrl = parsedData.linkedin || 'https://linkedin.com';
     }
 
     await profile.save();
 
     return NextResponse.json({
-      message: 'Resume analyzed and synchronized with profile successfully.',
+      message: 'Resume analysis and profile sync complete.',
       analysis: {
         _id: resumeAnalysisDoc._id,
         fileName: resumeAnalysisDoc.fileName,
@@ -689,7 +823,8 @@ export async function POST(req) {
         skillGap: resumeAnalysisDoc.skillGap,
         projectAnalysis: resumeAnalysisDoc.projectAnalysis,
         suggestions: resumeAnalysisDoc.suggestions,
-        placementInsights: resumeAnalysisDoc.placementInsights
+        placementInsights: resumeAnalysisDoc.placementInsights,
+        isManual: resumeAnalysisDoc.isManual
       }
     });
   } catch (error) {

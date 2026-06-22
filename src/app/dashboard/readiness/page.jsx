@@ -399,10 +399,10 @@ export default async function ReadinessScorePage() {
                 <div className="flex justify-between items-center text-xs p-3 rounded bg-slate-950/60 border border-border/5">
                   <div className="space-y-0.5">
                     <span className="font-bold text-slate-200">
-                      AI Resume Score
+                      Resume Score
                     </span>
                     <p className="text-[10px] text-slate-500">
-                      Proportional to your AI Resume Readiness score (Max 20 pts)
+                      Proportional to your Resume Readiness score (Max 20 pts)
                     </p>
                   </div>
                   <span className="font-bold text-indigo-400">

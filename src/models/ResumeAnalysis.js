@@ -10,19 +10,19 @@ const ResumeAnalysisSchema = new Schema(
     },
     fileName: {
       type: String,
-      required: true,
     },
     fileSize: {
       type: Number,
-      required: true,
     },
     fileType: {
       type: String,
-      required: true,
     },
     fileData: {
       type: String, // Base64 representation of file
-      required: true,
+    },
+    isManual: {
+      type: Boolean,
+      default: false,
     },
     extractedText: {
       type: String,

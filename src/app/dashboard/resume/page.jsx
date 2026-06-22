@@ -12,7 +12,7 @@ export default function LegacyResumeChecklistPage() {
 
   return (
     <div className="flex-1 bg-slate-950 p-6 md:p-12 flex items-center justify-center min-h-[calc(100vh-4rem)] text-slate-400">
-      Redirecting to AI Resume Analyzer...
+      Redirecting to Resume Analyzer...
     </div>
   );
 }

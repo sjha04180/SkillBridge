@@ -136,7 +136,7 @@ This document details all the enhancements and updates implemented in the SkillB
 
 ---
 
-## 9. AI Resume Analyzer & Resume Readiness Module (Phase 13)
+## 9. Resume Analyzer & Resume Readiness Module (Phase 13)
 
 ### 📂 Created/Modified Files:
 * **Created Database Model**: [ResumeAnalysis.js](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/models/ResumeAnalysis.js)
@@ -160,3 +160,31 @@ This document details all the enhancements and updates implemented in the SkillB
 4. **Auto-Profile Synchronization**: Synced parsed contact details, skills, certifications, and projects automatically with the user's Profile collection in MongoDB. This updates calculations, roadmaps, and company checkers instantly without duplicate entry.
 5. **Interactive UI Module**: Implemented a responsive SaaS analyzer view at `/dashboard/resume-analyzer` containing radial gauges, upload drop zones, visual progress bars, priority cards (High/Medium/Low) for suggestions, and structured tabs for extracted blocks.
 6. **Placement Score Refactoring**: Updated the overall Placement Readiness Score across the dashboard, analytics, and readiness tabs to follow the new formula: Skills (25%), Projects (25%), DSA (20%), Resume Score (20%), and Certifications (10%).
+
+---
+
+## 10. Hybrid Resume Analyzer Fallback (Phase 13.1)
+
+### 📂 Created/Modified Files:
+* **Modified Database Schema**: [ResumeAnalysis.js](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/models/ResumeAnalysis.js)
+* **Modified Backend API Route**: [route.js](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/api/resume-analyzer/route.js)
+* **Modified Frontend Component**: [page.jsx](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/dashboard/resume-analyzer/page.jsx)
+
+### 💡 Details:
+1. **Schema Adjustments**: Modified the `ResumeAnalysis` Mongoose schema to mark file metadata fields (`fileName`, `fileSize`, `fileType`, `fileData`) as optional and added the `isManual` boolean flag to differentiate manual entry calculations from parsed uploads.
+2. **Flexible API Payload Handling**: Enhanced the POST handler in `route.js` to process JSON request bodies. When `content-type` is `application/json`, it builds dummy resume text and parses form elements (Name, College, Branch, CGPA, skills array, projects array, certifications array, experience string).
+3. **Advanced Heuristic Fallback Scoring**: Refined grading heuristics so points are awarded based on content presence instead of strict title headings (e.g. recognizing project-like text blocks or repository URLs anywhere in the raw text).
+4. **Auto-Profile Synchronization**: Synced manually inputted technical skills, certifications, and project lists with the student's main career `Profile` collection inside MongoDB, deduplicating keys via case-insensitive checks.
+5. **Interactive Form UI**: Added a sleek glassmorphic collapsible card `Don't have a resume yet? [ Complete Manually ]` separated from the primary upload zone by a clean custom divider. Includes tag input components for skills and certifications and a dynamic project list builder.
+
+---
+
+## 11. GitHub & Google OAuth Environment Variables Alignment
+
+### 📂 Modified Files:
+* **NextAuth Route Handler**: [route.js](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/src/app/api/auth/%5B...nextauth%5D/route.js)
+* **Environment Configuration**: [.env.local](file:///c:/Users/pjha9/Documents/ALL%20Coding/Projects/SkillBridge/.env.local)
+
+### 💡 Details:
+1. **Unified Environment Variable Fallbacks**: Resolved the `client_id is required` runtime signin OAuth exception by editing the NextAuth API handler's provider configurations. Added secondary checks (`process.env.GITHUB_ID` and `process.env.Google_Client_ID`) to align with existing environment settings.
+2. **Environment Synchronization**: Standardized the NextAuth OAuth credentials inside `.env.local` by defining `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, and `GITHUB_CLIENT_SECRET` to prevent any future naming mismatch issues.

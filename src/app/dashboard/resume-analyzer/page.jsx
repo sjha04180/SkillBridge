@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   FileText,
   UploadCloud,
@@ -24,7 +26,9 @@ import {
   ChevronUp,
   AlertTriangle,
   RotateCcw,
-  BookOpen
+  BookOpen,
+  X,
+  Plus
 } from "lucide-react";
 
 const Github = (props) => (
@@ -49,6 +53,32 @@ export default function ResumeAnalyzerPage() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
   const fileInputRef = useRef(null);
+
+  // Manual entry state additions (Phase 13.1)
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [manualData, setManualData] = useState({
+    name: "",
+    college: "",
+    branch: "",
+    cgpa: "",
+    phone: "",
+    githubUrl: "",
+    linkedinUrl: "",
+    experience: "",
+    skills: [],
+    certifications: [],
+    projects: []
+  });
+
+  const [manualSkillInput, setManualSkillInput] = useState("");
+  const [manualCertInput, setManualCertInput] = useState("");
+  const [manualProject, setManualProject] = useState({
+    title: "",
+    description: "",
+    technologies: "",
+    githubLink: "",
+    liveLink: ""
+  });
 
   // Tabs for parsed details
   const [activeDetailsTab, setActiveDetailsTab] = useState("contact");
@@ -186,6 +216,153 @@ export default function ResumeAnalyzerPage() {
     }
   };
 
+  const addManualSkill = () => {
+    const clean = manualSkillInput.trim();
+    if (clean && !manualData.skills.includes(clean)) {
+      setManualData(prev => ({ ...prev, skills: [...prev.skills, clean] }));
+      setManualSkillInput("");
+    }
+  };
+
+  const removeManualSkill = (index) => {
+    setManualData(prev => ({
+      ...prev,
+      skills: prev.skills.filter((_, idx) => idx !== index)
+    }));
+  };
+
+  const addManualCert = () => {
+    const clean = manualCertInput.trim();
+    if (clean && !manualData.certifications.includes(clean)) {
+      setManualData(prev => ({ ...prev, certifications: [...prev.certifications, clean] }));
+      setManualCertInput("");
+    }
+  };
+
+  const removeManualCert = (index) => {
+    setManualData(prev => ({
+      ...prev,
+      certifications: prev.certifications.filter((_, idx) => idx !== index)
+    }));
+  };
+
+  const addManualProject = () => {
+    const title = manualProject.title.trim();
+    if (!title) {
+      showToast("Project title is required", "error");
+      return;
+    }
+    const techArray = manualProject.technologies
+      .split(",")
+      .map(t => t.trim())
+      .filter(Boolean);
+
+    const newProject = {
+      title,
+      description: manualProject.description.trim(),
+      technologies: techArray,
+      githubLink: manualProject.githubLink.trim(),
+      liveLink: manualProject.liveLink.trim()
+    };
+
+    setManualData(prev => ({ ...prev, projects: [...prev.projects, newProject] }));
+    setProjectTitle(""); // fallback compatibility
+    setManualProject({
+      title: "",
+      description: "",
+      technologies: "",
+      githubLink: "",
+      liveLink: ""
+    });
+  };
+
+  const setProjectTitle = (val) => {
+    // Helper to keep addManualProject happy if referenced in older structures
+  };
+
+  const removeManualProject = (index) => {
+    setManualData(prev => ({
+      ...prev,
+      projects: prev.projects.filter((_, idx) => idx !== index)
+    }));
+  };
+
+  const resetManualForm = () => {
+    setManualData({
+      name: "",
+      college: "",
+      branch: "",
+      cgpa: "",
+      phone: "",
+      githubUrl: "",
+      linkedinUrl: "",
+      experience: "",
+      skills: [],
+      certifications: [],
+      projects: []
+    });
+    setManualSkillInput("");
+    setManualCertInput("");
+    setManualProject({
+      title: "",
+      description: "",
+      technologies: "",
+      githubLink: "",
+      liveLink: ""
+    });
+  };
+
+  const handleManualSubmit = async (e) => {
+    e.preventDefault();
+    if (!manualData.name.trim() || !manualData.college.trim() || !manualData.branch.trim()) {
+      showToast("Name, College and Branch are required.", "error");
+      return;
+    }
+    
+    setIsUploading(true);
+    setUploadStage("Analyzing manual inputs...");
+    setUploadProgress(30);
+    await new Promise(r => setTimeout(r, 600));
+
+    setUploadStage("Calculating ATS & Readiness Score...");
+    setUploadProgress(70);
+    await new Promise(r => setTimeout(r, 600));
+
+    setUploadStage("Syncing profile dashboard...");
+    setUploadProgress(95);
+
+    try {
+      const res = await fetch("/api/resume-analyzer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(manualData)
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to analyze manual details.");
+      }
+
+      const data = await res.json();
+      setUploadProgress(100);
+      setUploadStage("Analysis Complete!");
+      await new Promise(r => setTimeout(r, 400));
+
+      setAnalysis(data.analysis);
+      showToast("Manual resume data saved and profile synced!", "success");
+      setShowManualForm(false);
+      resetManualForm();
+    } catch (err) {
+      showToast(err.message || "Failed to process manual entry.", "error");
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+      setUploadStage("");
+    }
+  };
+
   const getPriorityColor = (priority) => {
     switch (priority) {
       case "High":
@@ -221,7 +398,7 @@ export default function ResumeAnalyzerPage() {
           <div>
             <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-indigo-300 bg-clip-text text-transparent flex items-center gap-3">
               <FileText className="h-10 w-10 text-indigo-400" />
-              AI Resume Analyzer
+              Resume Analyzer
             </h1>
             <p className="text-slate-400 mt-1">
               Upload your PDF/DOCX resume to receive instantaneous ATS compatibility reports, SkillBridge profile sync, and placement insights.
@@ -353,6 +530,370 @@ export default function ResumeAnalyzerPage() {
             )}
           </Card>
         </div>
+
+        {/* Divider */}
+        <div className="relative my-8 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-white/5"></div>
+          </div>
+          <div className="relative bg-slate-950 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest bg-gradient-to-r from-indigo-500/10 via-slate-950 to-indigo-500/10">
+            OR
+          </div>
+        </div>
+
+        {/* Fallback Entry Card / Toggle */}
+        <Card className="glass-panel p-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-300">Don't have a resume yet?</h3>
+              <p className="text-xs text-slate-500 mt-1">Complete your details manually to calculate target scores, view ATS tips, and synchronize with your SkillBridge career profile.</p>
+            </div>
+            <Button
+              onClick={() => setShowManualForm(!showManualForm)}
+              className="bg-slate-900 border border-white/10 text-indigo-400 hover:bg-slate-800 font-semibold px-6 py-2 rounded-lg transition-all shrink-0 cursor-pointer animate-pulse-slow"
+            >
+              {showManualForm ? "Hide Manual Form" : "Complete Manually"}
+            </Button>
+          </div>
+
+          {showManualForm && (
+            <div className="mt-8 border-t border-white/5 pt-8 space-y-8 animate-slide-up">
+              <form onSubmit={handleManualSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Name */}
+                  <div className="space-y-2">
+                    <Label htmlFor="manual-name" className="text-slate-300 text-xs font-semibold uppercase tracking-wider">
+                      Full Name
+                    </Label>
+                    <Input
+                      id="manual-name"
+                      value={manualData.name}
+                      onChange={(e) => setManualData(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="e.g. Rahul Sharma"
+                      className="bg-slate-950/80 border-white/10 text-white focus-visible:ring-indigo-500"
+                      required
+                    />
+                  </div>
+
+                  {/* Phone */}
+                  <div className="space-y-2">
+                    <Label htmlFor="manual-phone" className="text-slate-300 text-xs font-semibold uppercase tracking-wider">
+                      Phone Number
+                    </Label>
+                    <Input
+                      id="manual-phone"
+                      value={manualData.phone}
+                      onChange={(e) => setManualData(prev => ({ ...prev, phone: e.target.value }))}
+                      placeholder="e.g. +91 9876543210"
+                      className="bg-slate-950/80 border-white/10 text-white focus-visible:ring-indigo-500"
+                    />
+                  </div>
+
+                  {/* College */}
+                  <div className="space-y-2">
+                    <Label htmlFor="manual-college" className="text-slate-300 text-xs font-semibold uppercase tracking-wider">
+                      College / University
+                    </Label>
+                    <Input
+                      id="manual-college"
+                      value={manualData.college}
+                      onChange={(e) => setManualData(prev => ({ ...prev, college: e.target.value }))}
+                      placeholder="e.g. IIT Bombay"
+                      className="bg-slate-950/80 border-white/10 text-white focus-visible:ring-indigo-500"
+                      required
+                    />
+                  </div>
+
+                  {/* Branch */}
+                  <div className="space-y-2">
+                    <Label htmlFor="manual-branch" className="text-slate-300 text-xs font-semibold uppercase tracking-wider">
+                      Branch of Study
+                    </Label>
+                    <Input
+                      id="manual-branch"
+                      value={manualData.branch}
+                      onChange={(e) => setManualData(prev => ({ ...prev, branch: e.target.value }))}
+                      placeholder="e.g. Computer Science & Engineering"
+                      className="bg-slate-950/80 border-white/10 text-white focus-visible:ring-indigo-500"
+                      required
+                    />
+                  </div>
+
+                  {/* CGPA */}
+                  <div className="space-y-2">
+                    <Label htmlFor="manual-cgpa" className="text-slate-300 text-xs font-semibold uppercase tracking-wider">
+                      CGPA / GPA
+                    </Label>
+                    <Input
+                      id="manual-cgpa"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="10"
+                      value={manualData.cgpa}
+                      onChange={(e) => setManualData(prev => ({ ...prev, cgpa: e.target.value }))}
+                      placeholder="e.g. 8.5"
+                      className="bg-slate-950/80 border-white/10 text-white focus-visible:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 col-span-1 md:col-span-2">
+                    {/* GitHub URL */}
+                    <div className="space-y-2">
+                      <Label htmlFor="manual-github" className="text-slate-300 text-xs font-semibold uppercase tracking-wider">
+                        GitHub Profile URL
+                      </Label>
+                      <Input
+                        id="manual-github"
+                        value={manualData.githubUrl}
+                        onChange={(e) => setManualData(prev => ({ ...prev, githubUrl: e.target.value }))}
+                        placeholder="e.g. https://github.com/username"
+                        className="bg-slate-950/80 border-white/10 text-white focus-visible:ring-indigo-500"
+                      />
+                    </div>
+                    {/* LinkedIn URL */}
+                    <div className="space-y-2">
+                      <Label htmlFor="manual-linkedin" className="text-slate-300 text-xs font-semibold uppercase tracking-wider">
+                        LinkedIn Profile URL
+                      </Label>
+                      <Input
+                        id="manual-linkedin"
+                        value={manualData.linkedinUrl}
+                        onChange={(e) => setManualData(prev => ({ ...prev, linkedinUrl: e.target.value }))}
+                        placeholder="e.g. https://linkedin.com/in/username"
+                        className="bg-slate-950/80 border-white/10 text-white focus-visible:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Experience Textarea */}
+                <div className="space-y-2">
+                  <Label htmlFor="manual-experience" className="text-slate-300 text-xs font-semibold uppercase tracking-wider">
+                    Experience / Internship Details
+                  </Label>
+                  <textarea
+                    id="manual-experience"
+                    rows={4}
+                    value={manualData.experience}
+                    onChange={(e) => setManualData(prev => ({ ...prev, experience: e.target.value }))}
+                    placeholder="Enter any work experience, internships, or extra-curricular experiences (one per line)..."
+                    className="w-full rounded-md border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white placeholder-slate-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500"
+                  />
+                </div>
+
+                {/* Skills & Certifications Side by Side */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Skills Tagger */}
+                  <div className="space-y-3 p-4 bg-slate-900/20 rounded-xl border border-white/5">
+                    <Label className="text-slate-300 text-xs font-semibold uppercase tracking-wider">
+                      Technical Skills
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={manualSkillInput}
+                        onChange={(e) => setManualSkillInput(e.target.value)}
+                        placeholder="Add skill (e.g. React)"
+                        className="bg-slate-950 border-white/10 text-white text-xs py-1.5"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addManualSkill();
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        onClick={addManualSkill}
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 h-auto rounded-lg cursor-pointer"
+                      >
+                        Add
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 min-h-[40px] pt-1">
+                      {manualData.skills.map((s, idx) => (
+                        <span key={s} className="text-[11px] font-semibold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/10 flex items-center gap-1">
+                          {s}
+                          <button type="button" onClick={() => removeManualSkill(idx)} className="hover:text-rose-400 cursor-pointer">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                      {manualData.skills.length === 0 && (
+                        <span className="text-xs text-slate-500 italic">No skills added yet.</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Certifications Tagger */}
+                  <div className="space-y-3 p-4 bg-slate-900/20 rounded-xl border border-white/5">
+                    <Label className="text-slate-300 text-xs font-semibold uppercase tracking-wider">
+                      Certifications
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={manualCertInput}
+                        onChange={(e) => setManualCertInput(e.target.value)}
+                        placeholder="Add credential (e.g. AWS Certified)"
+                        className="bg-slate-950 border-white/10 text-white text-xs py-1.5"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addManualCert();
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        onClick={addManualCert}
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 h-auto rounded-lg cursor-pointer"
+                      >
+                        Add
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 min-h-[40px] pt-1">
+                      {manualData.certifications.map((c, idx) => (
+                        <span key={c} className="text-[11px] font-semibold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/10 flex items-center gap-1">
+                          {c}
+                          <button type="button" onClick={() => removeManualCert(idx)} className="hover:text-rose-400 cursor-pointer">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                      {manualData.certifications.length === 0 && (
+                        <span className="text-xs text-slate-500 italic">No certifications added yet.</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Projects Section */}
+                <div className="space-y-4 p-4 bg-slate-900/20 rounded-xl border border-white/5">
+                  <h4 className="text-slate-300 text-xs font-semibold uppercase tracking-wider flex items-center gap-2">
+                    <Code className="h-4 w-4 text-indigo-400" />
+                    Projects
+                  </h4>
+                  
+                  {/* Dynamic Project Creator Inputs */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/40 p-4 rounded-lg border border-white/5">
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label className="text-[10px] text-slate-400 font-bold uppercase">Project Title</Label>
+                      <Input
+                        value={manualProject.title}
+                        onChange={(e) => setManualProject(prev => ({ ...prev, title: e.target.value }))}
+                        placeholder="e.g. E-Commerce Platform"
+                        className="bg-slate-950 border-white/10 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label className="text-[10px] text-slate-400 font-bold uppercase">Description</Label>
+                      <textarea
+                        rows={2}
+                        value={manualProject.description}
+                        onChange={(e) => setManualProject(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Detail what you built, using action verbs & metrics if possible (e.g. Built a responsive store using React & Node, reducing checkout latency by 15%)."
+                        className="w-full rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white placeholder-slate-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label className="text-[10px] text-slate-400 font-bold uppercase">Technologies Used (comma separated)</Label>
+                      <Input
+                        value={manualProject.technologies}
+                        onChange={(e) => setManualProject(prev => ({ ...prev, technologies: e.target.value }))}
+                        placeholder="e.g. React, Node.js, Express, MongoDB"
+                        className="bg-slate-950 border-white/10 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-slate-400 font-bold uppercase">GitHub Link</Label>
+                      <Input
+                        value={manualProject.githubLink}
+                        onChange={(e) => setManualProject(prev => ({ ...prev, githubLink: e.target.value }))}
+                        placeholder="e.g. https://github.com/username/project"
+                        className="bg-slate-950 border-white/10 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-slate-400 font-bold uppercase">Live Demo Link</Label>
+                      <Input
+                        value={manualProject.liveLink}
+                        onChange={(e) => setManualProject(prev => ({ ...prev, liveLink: e.target.value }))}
+                        placeholder="e.g. https://myproject.vercel.app"
+                        className="bg-slate-950 border-white/10 text-xs"
+                      />
+                    </div>
+                    
+                    <div className="sm:col-span-2 pt-2 flex justify-end">
+                      <Button
+                        type="button"
+                        onClick={addManualProject}
+                        className="bg-slate-900 border border-white/10 text-indigo-400 hover:bg-slate-800 text-xs px-4 py-2 cursor-pointer"
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" /> Add Project
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* List of Added Projects */}
+                  <div className="space-y-2">
+                    {manualData.projects.map((proj, idx) => (
+                      <div key={idx} className="p-3 bg-slate-950/60 border border-white/5 rounded-xl flex justify-between items-start gap-4">
+                        <div className="space-y-1">
+                          <h5 className="text-xs font-bold text-white">{proj.title}</h5>
+                          <p className="text-[11px] text-slate-400">{proj.description}</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {proj.technologies.map(t => (
+                              <span key={t} className="text-[9px] font-semibold px-2 py-0.5 rounded bg-slate-900 text-slate-500 font-medium">
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="flex gap-3 text-[10px] text-indigo-400 font-semibold pt-1">
+                            {proj.githubLink && <span>GitHub: {proj.githubLink}</span>}
+                            {proj.liveLink && <span>Live: {proj.liveLink}</span>}
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => removeManualProject(idx)}
+                          className="text-rose-500 hover:text-rose-400 hover:bg-rose-500/5 p-1 h-auto cursor-pointer"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    {manualData.projects.length === 0 && (
+                      <p className="text-xs text-slate-500 italic">No projects added yet.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Form Action Buttons */}
+                <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowManualForm(false);
+                      resetManualForm();
+                    }}
+                    className="border-white/5 text-slate-300 hover:bg-white/5 cursor-pointer"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-2.5 rounded-lg flex items-center gap-2 cursor-pointer"
+                  >
+                    Submit Details
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
+        </Card>
 
         {analysis && (
           <div className="space-y-8 animate-slide-up">
