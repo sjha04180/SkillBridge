@@ -4,14 +4,14 @@ const mockPdfBuffer = Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<\
 async function test() {
   try {
     const uint8 = new Uint8Array(mockPdfBuffer);
-    const parser = new PDFParse(uint8, { verbosity: 0 });
-    console.log('Instance created with Uint8Array!');
+    const parser = new PDFParse({ data: uint8, verbosity: 0 });
+    console.log('Instance created with data option!');
     await parser.load();
     console.log('Parser loaded!');
-    const text = await parser.getText();
-    console.log('Parser text:', text);
+    const result = await parser.getText();
+    console.log('Parser text:', result.text);
   } catch (e) {
-    console.log('Uint8Array error:', e.message);
+    console.log('Error:', e.message);
   }
 }
 
