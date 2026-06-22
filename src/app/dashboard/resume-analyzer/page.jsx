@@ -135,7 +135,7 @@ export default function ResumeAnalyzerPage() {
     if (analysis && isDev) {
       const hasGithub = !!(analysis.parsedData.github || analysis.extractedText?.toLowerCase().includes('github.com') || analysis.extractedText?.toLowerCase().includes('github.io'));
       const hasLinkedin = !!(analysis.parsedData.linkedin || analysis.extractedText?.toLowerCase().includes('linkedin.com'));
-      console.log("=== AI Resume Extraction Debug Log ===");
+      console.log("=== Resume Extraction Debug Log ===");
       console.log(`Detected:
 ${hasGithub ? '✓' : '✗'} GitHub
 ${hasLinkedin ? '✓' : '✗'} LinkedIn
